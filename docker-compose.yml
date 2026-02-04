@@ -1,0 +1,86 @@
+version: '3.9'
+
+services:
+
+  # 🗄️ PostgreSQL Database
+  db:
+    image: postgres:18
+    container_name: quillhub_db
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: password123
+      POSTGRES_DB: quillhub
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - app-network
+
+  # 🔹 Redis Cache
+  redis:
+    image: redis:alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+    networks:
+      - app-network
+
+  # 🚀 Go Server
+  server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: quillhub_server
+    ports:
+      - "8080:8080"
+
+    # 👉 LOAD YOUR .env FILE HERE  
+    env_file:
+      - .env
+      
+    environment:
+      DB_HOST: ${DB_HOST} 
+      JWT_SECRET: ${JWT_SECRET}           
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN} 
+      PORT: 8080
+      EMAIL_USER: ${EMAIL_USER}
+      EMAIL_PASS: ${EMAIL_PASS}
+      FRONTEND_URL: ${FRONTEND_URL}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_URL: redis://default:JzopeQGFgYZLZyKRJI2xWceIYctiKWOt@redis-19945.c253.us-central1-1.gce.cloud.redislabs.com:19945  # Hosted URL
+      CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME}
+      CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY}
+      CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET}
+
+      
+    depends_on:
+      - db
+      - redis
+    networks:
+      - app-network
+
+    develop:
+      watch:
+        - action: sync
+          path: ./cmd
+          target: /app/cmd
+        - action: sync
+          path: ./internal
+          target: /app/internal
+        - action: sync
+          path: ./pkg
+          target: /app/pkg
+        - action: sync
+          path: ./config
+          target: /app/config
+        - action: rebuild
+          path: go.mod
+
+volumes:
+  postgres_data:
+
+networks:
+  app-network:
+    driver: bridge

@@ -1,0 +1,16 @@
+node_modules
+dist
+build
+*.tsbuildinfo
+npm-debug.log
+.env
+.env.local
+.git
+.gitignore
+Dockerfile
+docker-compose.yml
+.dockerignore
+README.md
+*.md
+*.test.ts
+__tests__
