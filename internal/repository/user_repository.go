@@ -25,7 +25,7 @@ func NewUserRepository(db *pgxpool.Pool) *UserRepository {
 	return &UserRepository{db: db}
 }
 
-func (u *UserRepository) Save(ctx context.Context, user *model.User) error {
+func (u *UserRepository) Create(ctx context.Context, user *model.User) error {
     query := `
         INSERT INTO users(name, username, email, password, role)
         VALUES ($1, $2, $3, $4, $5)
@@ -82,3 +82,27 @@ func (u *UserRepository) FindByEmail(ctx context.Context, email string) (*model.
     return &user, nil
 }
 
+func (u *UserRepository) FindByUsername(ctx context.Context, username string) (*model.User, error) {
+	query := ` 
+		SELECT id , username , password
+		FROM users 
+		WHERE username = $1
+	`
+
+	var user model.User
+	err := u.db.QueryRow(
+		ctx ,
+		query, 
+		username,
+	).Scan(&user.ID, &user.Username, &user.Password)
+
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			// return nil, errors.New("not found")
+			return nil, nil // not found → no error
+		}
+		return nil, fmt.Errorf("failed to find user by username: %w", err)
+	}
+
+	return &user, nil
+}

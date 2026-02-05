@@ -43,3 +43,8 @@ type UserResponse struct {
     ProfileURL *string    `json:"profile_url,omitempty"`
     CreatedAt  time.Time  `json:"created_at"`
 }
+
+type LoginResponse struct {
+	Token string        `json:"token"`
+	User  UserResponse  `json:"user"`
+}

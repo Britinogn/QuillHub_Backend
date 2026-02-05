@@ -2,73 +2,84 @@ package utils
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 )
 
-func getSecretKey() string {
-	secretKey := os.Getenv("JWT_SECRET") 
-	if secretKey == "" {
-		panic("JWT_SECRET is not set in environment")
-	}
-	return secretKey
+var (
+	ErrInvalidToken       = errors.New("invalid token")
+	ErrTokenExpired       = errors.New("token has expired")
+	ErrMissingClaims      = errors.New("missing required claims")
+	ErrUnexpectedSigning  = errors.New("unexpected signing method")
+)
+
+type Claims struct {
+	UserID   string `json:"user_id"`
+	Email    string `json:"email"`
+	Username string `json:"username,omitempty"` // optional
+	Role     string `json:"role,omitempty"`     // very useful for authorization
+	jwt.RegisteredClaims
 }
 
-// GenerateToken creates a JWT for the user
-func GenerateToken(email, userId string) (string, error) {
-	claims := jwt.MapClaims{
-		"email":  email,
-		"userId": userId, 
-		"exp":    time.Now().Add(24 * time.Hour).Unix(), // 24 hours expiry
+func getSecret() []byte {
+	secret := os.Getenv("JWT_SECRET")
+	if secret == "" {
+		// In production → return error instead of panic
+		panic("JWT_SECRET environment variable is not set")
+	}
+	return []byte(secret)
+}
+
+// GenerateToken creates a signed JWT
+func GenerateToken(userID, email, username, role string) (string, error) {
+	claims := Claims{
+		UserID:   userID,
+		Email:    email,
+		Username: username,
+		Role:     role,
+		RegisteredClaims: jwt.RegisteredClaims{
+			Subject:   userID,                           // standard "sub"
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
+			// Optional: Issuer: "quillhub-api", Audience: []string{"quillhub-frontend"}
+		},
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	signedToken, err := token.SignedString([]byte(getSecretKey()))
+	signed, err := token.SignedString(getSecret())
 	if err != nil {
-		return "", errors.New("failed to generate token: " + err.Error())
+		return "", fmt.Errorf("failed to sign token: %w", err)
 	}
-
-	return signedToken, nil
+	return signed, nil
 }
 
-// VerifyToken validates JWT and returns userId (UUID string)
-func VerifyToken(tokenStr string) (string, error) { // ✅ Return string, not int64
-	parsedToken, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, errors.New("unexpected signing method")
+// VerifyToken parses and validates the token, returns the full claims
+func VerifyToken(tokenStr string) (*Claims, error) {
+	parsed, err := jwt.ParseWithClaims(tokenStr, &Claims{}, func(t *jwt.Token) (interface{}, error) {
+		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, ErrUnexpectedSigning
 		}
-		return []byte(getSecretKey()), nil
+		return getSecret(), nil
 	})
 
 	if err != nil {
-		return "", errors.New("could not parse token: " + err.Error())
+		if errors.Is(err, jwt.ErrTokenExpired) {
+			return nil, ErrTokenExpired
+		}
+		return nil, fmt.Errorf("%w: %w", ErrInvalidToken, err)
 	}
 
-	if !parsedToken.Valid {
-		return "", errors.New("invalid token")
+	if !parsed.Valid {
+		return nil, ErrInvalidToken
 	}
 
-	claims, ok := parsedToken.Claims.(jwt.MapClaims)
+	claims, ok := parsed.Claims.(*Claims)
 	if !ok {
-		return "", errors.New("invalid token claims")
+		return nil, ErrMissingClaims
 	}
 
-	// Check expiration (jwt.Parse already validates this, but explicit check is good practice)
-	exp, ok := claims["exp"].(float64)
-	if !ok {
-		return "", errors.New("token missing expiration claim")
-	}
-	if int64(exp) < time.Now().Unix() {
-		return "", errors.New("token has expired")
-	}
-
-	// Extract userId as string (UUID)
-	userId, ok := claims["userId"].(string) 
-	if !ok {
-		return "", errors.New("token missing or invalid userId")
-	}
-
-	return userId, nil
+	return claims, nil
 }
