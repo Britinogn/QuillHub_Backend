@@ -14,3 +14,7 @@ README.md
 *.md
 *.test.ts
 __tests__
+
+**/node_modules
+**/.git
+**/tmp

@@ -1,0 +1,22 @@
+FROM golang:1.25.4-alpine
+
+
+# Add git (needed for some Go modules)
+RUN apk add --no-cache git ca-certificates
+
+WORKDIR /app
+
+# Copy dependency files
+COPY go.mod go.sum ./
+
+# Download dependencies with retry and verbose output
+RUN go mod download && go mod verify
+
+# Copy source code
+COPY . .
+
+# Expose port
+EXPOSE 8080
+
+# Run with Air
+CMD ["air", "-c", ".air.toml"]

@@ -1,53 +1,45 @@
 # Start from a lightweight Go base image
 # golang:1.23-alpine is a minimal Alpine Linux image with Go 1.23
-FROM golang:1.23-alpine AS builder
+FROM golang:1.25.4-alpine AS builder
 
-# Set the working directory inside the container
-# All subsequent commands will run from this directory
+# Install build dependencies
+RUN apk add --no-cache git
+
 WORKDIR /app
 
-# Copy go.mod and go.sum first
-# We do this separately to take advantage of Docker's layer caching
-# If these files don't change, Docker won't re-download dependencies
+# Copy dependency files first (for better caching)
 COPY go.mod go.sum ./
 
-# Download all Go module dependencies
-# This downloads packages listed in go.mod
+# Download dependencies (this layer will be cached)
 RUN go mod download
 
-# Copy all remaining application files into the container
-# This includes your Go source code (.go files)
+# Copy vendor folder if it exists (much faster than go mod download)
+COPY vendor ./vendor
+
+# Copy source code
 COPY . .
 
-# Build the Go binary
-# CGO_ENABLED=0: Build a static binary without C dependencies
-# GOOS=linux: Target Linux operating system
-# GOARCH=amd64: Target 64-bit architecture
-# -o server: Output binary named 'server'
+# Build with vendor (if available) or normal mode
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
+    go build -mod=vendor -o server ./cmd/server || \
     go build -o server ./cmd/server
 
 # -------- Runtime stage --------
-# Use a minimal Alpine Linux image for the final container
 FROM alpine:3.19
 
-# Set the working directory in the runtime container
 WORKDIR /app
 
-# Install CA certificates for HTTPS calls
-RUN apk add --no-cache ca-certificates
+# Install runtime dependencies
+RUN apk add --no-cache ca-certificates tzdata
 
-# Copy the compiled binary from the builder stage
+# Copy binary from builder
 COPY --from=builder /app/server .
 
-# Tell Docker that the container will listen on the specified port
-# This doesn't actually publish the port, just documents it
-EXPOSE $PORT
+# Expose port (use environment variable)
+EXPOSE ${PORT:-8080}
 
-# The command to run when the container starts
-# This runs the compiled Go binary
+# Run the application
 CMD ["./server"]
-
 
 
 
