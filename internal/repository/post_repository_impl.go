@@ -16,4 +16,4 @@ package repositories
 
 // func (r *postRepository) Create(post *models.Post) error {
 // 	return r.db.Create(post).Error
-//}
+// }

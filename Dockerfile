@@ -47,3 +47,39 @@ EXPOSE $PORT
 # The command to run when the container starts
 # This runs the compiled Go binary
 CMD ["./server"]
+
+
+
+
+
+
+
+# Stop containers
+# docker-compose down
+
+# Stop and remove volumes (clean slate)
+# docker-compose down -v
+
+# View logs
+# docker-compose logs -f
+
+# View logs for specific service
+# docker-compose logs -f server
+
+# Restart a specific service
+# docker-compose restart server
+
+# Rebuild and start
+# docker-compose up --build --force-recreate
+
+# Check running containers
+# docker-compose ps
+
+#2️⃣ Start with Hot Reload (Development Mode):
+
+# docker-compose watch
+
+# 1️⃣ Start Docker Compose (Production Mode):
+
+# docker-compose up
+# docker-compose up --build
