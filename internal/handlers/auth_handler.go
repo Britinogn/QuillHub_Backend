@@ -3,6 +3,7 @@ package handlers
 import (
 	"errors"
 	"net/http"
+	"log"
 
 	"github.com/britinogn/quillhub/internal/model"
 	"github.com/britinogn/quillhub/internal/services"
@@ -27,6 +28,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
     // Convert to User model
 	user := &model.User{
 		Name:     req.Name,
+		// Username: req.Username,
 		Email:    req.Email,
         Role: req.Role,
 	}
@@ -34,20 +36,23 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	ctx := c.Request.Context()
 	err := h.authService.Register(ctx, &req)
 	if err != nil {
+		log.Printf("[REGISTER-ERROR] Full error from service: %v", err)  // ← add this line
 		if errors.Is(err, services.ErrEmailAlreadyRegistered) {
 			c.JSON(409, gin.H{"error": "email already registered"}) // ← friendly message
 			return
 		}
 		// Other errors → generic 500
-		c.JSON(500, gin.H{"error": "something went wrong"})
-		return
+		// c.JSON(500, gin.H{"error": "failed to create user"})
+		// return
 	}
 
 	c.JSON(http.StatusCreated, gin.H{
         "message": "user registered successfully",
         "data": model.UserResponse{
-            ID: user.ID,
-            Name:user.Username,
+            // ID: user.ID,
+			ID : user.ID.String(),
+            Name:user.Name,
+			Username: req.Username,
             Email: user.Email,
             Role: user.Role,
         },
@@ -79,7 +84,8 @@ func (h *AuthHandler) Login(c *gin.Context) {
         "data": model.LoginResponse{
             Token: token,
             User: model.UserResponse{
-                ID: user.ID,
+                // ID: user.ID,
+				ID : user.ID.String(),
                 Name:user.Name,
                 Username: user.Username,
                 Email: user.Email,

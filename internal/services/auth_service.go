@@ -92,6 +92,7 @@ func (s *AuthService) Register(ctx context.Context, user *model.User) error {
 	if err := s.repo.Create(ctx , newUser); err != nil {
 		return fmt.Errorf("failed to create user: %w", err)
 	}
+	
 
 	//save user
 	// if err := s.repo.Create(ctx, user); err != nil {
@@ -137,10 +138,17 @@ func (s *AuthService) Login(ctx context.Context, identifier, password string) (*
 
 
 	// Generate token 
-    token, err := utils.GenerateToken(user.ID, user.Email, user.Username, user.Role)
+    // token, err := utils.GenerateToken(user.ID, user.Email, user.Username, user.Role)
+    // if err != nil {
+    //     return nil, "", fmt.Errorf("failed to generate token: %w", err)
+    // }
+
+	// Generate token 
+    token, err := utils.GenerateToken(user.ID.String(), user.Email, user.Username, user.Role)
     if err != nil {
         return nil, "", fmt.Errorf("failed to generate token: %w", err)
     }
+
 
 	return user, token, nil
 

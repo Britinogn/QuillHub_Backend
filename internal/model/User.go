@@ -1,9 +1,13 @@
 package model
 
-import "time"
+import (
+	"time"
+
+	"github.com/jackc/pgx/v5/pgtype"
+)
 
 type User struct {
-    ID          string     `json:"id"`
+    ID          pgtype.UUID    `json:"id"`
     Name        string     `json:"name"`
     Username    string     `json:"username"`
     Email       string     `json:"email"`

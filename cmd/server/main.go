@@ -58,7 +58,8 @@ func main() {
 
 	// Graceful shutdown
 	srv := &http.Server{
-		Addr:   os.Getenv("PORT"),   // or ":8080"
+		// Addr:   os.Getenv("PORT"), 
+		Addr:  ":8080",
 		Handler: router,
 	}
 

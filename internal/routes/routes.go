@@ -27,7 +27,7 @@ func RegisterRoutes(router *gin.Engine, authHandler *handlers.AuthHandler) {
 		// Auth endpoints
 		auth := public.Group("/auth")
 		{
-			auth.POST("/register", authHandler.Register)
+			auth.POST("/signup", authHandler.Register)
 			auth.POST("/login", authHandler.Login)
 
 			// Future additions:
