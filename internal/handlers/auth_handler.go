@@ -3,7 +3,6 @@ package handlers
 import (
 	"errors"
 	"net/http"
-	"log"
 
 	"github.com/britinogn/quillhub/internal/model"
 	"github.com/britinogn/quillhub/internal/services"
@@ -21,12 +20,10 @@ func NewAuthHandler(authService *services.AuthService) *AuthHandler{
 func (h *AuthHandler) Register(c *gin.Context) {
     var req model.CreateUserRequest  // ← Use CreateUserRequest, not model.User
     if err := c.ShouldBindJSON(&req); err != nil {
-        log.Printf("[REGISTER-ERROR] Binding failed: %v", err)
         c.JSON(400, gin.H{"error": "invalid request", "details": err.Error()})
         return
     }
 
-    log.Printf("[REGISTER] Attempting to register user: %s", req.Email)
 
     // Convert CreateUserRequest to User model
     user := &model.User{
@@ -47,7 +44,6 @@ func (h *AuthHandler) Register(c *gin.Context) {
     ctx := c.Request.Context()
     err := h.authService.Register(ctx, user)
     if err != nil {
-        log.Printf("[REGISTER-ERROR] Service error: %v", err)
         if errors.Is(err, services.ErrEmailAlreadyRegistered) {
             c.JSON(409, gin.H{"error": "email already registered"})
             return
@@ -62,8 +58,6 @@ func (h *AuthHandler) Register(c *gin.Context) {
         })
         return
     }
-
-    log.Printf("[REGISTER] User created successfully with ID: %s", user.ID.String())
 
     c.JSON(http.StatusCreated, gin.H{
         "message": "user registered successfully",
@@ -139,7 +133,6 @@ func (h *AuthHandler) RegisterAdmin(c *gin.Context) {
     ctx := c.Request.Context()
     err := h.authService.RegisterAdmin(ctx, user, requestingUserRole.(string))
     if err != nil {
-        log.Printf("[REGISTER-ADMIN-ERROR] %v", err)
         c.JSON(500, gin.H{"error": err.Error()})
         return
     }

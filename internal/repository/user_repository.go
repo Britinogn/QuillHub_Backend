@@ -5,7 +5,6 @@ import (
 	// "database/sql"
 	"errors"
 	"fmt"
-    "log"
 
 	"github.com/britinogn/quillhub/internal/model"
 	"github.com/britinogn/quillhub/pkg/utils"
@@ -14,6 +13,8 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
+
+// Save, Get, Update, Delete
 
 // Generate UUID for new user
 //user.ID = uuid.New().String()
@@ -33,16 +34,12 @@ func (u *UserRepository) Create(ctx context.Context, user *model.User) error {
         RETURNING id, created_at, updated_at
     `
 
-    log.Printf("[REPO] Creating user - username: %s, email: %s", user.Username, user.Email)
 
     // Hash password
     hashedPassword, err := utils.HashPassword(user.Password)
     if err != nil {
-        log.Printf("[REPO] Password hashing failed: %v", err)
         return fmt.Errorf("failed to hash password: %w", err)
     }
-
-    log.Printf("[REPO] Executing insert query")
 
     // Execute query and scan the returned values
     err = u.db.QueryRow(
@@ -56,11 +53,9 @@ func (u *UserRepository) Create(ctx context.Context, user *model.User) error {
     ).Scan(&user.ID, &user.CreatedAt, &user.UpdatedAt)
 
     if err != nil {
-        log.Printf("[REPO] Database error: %v", err)
         return fmt.Errorf("failed to save user: %w", err)
     }
 
-    log.Printf("[REPO] User saved with ID: %s", user.ID.String())
     return nil
 }
 

@@ -33,12 +33,6 @@ type CreateUserRequest struct {
 
 }
 
-// LoginRequest - for login (email OR username + password)
-type LoginRequest struct {
-    Identifier string `json:"identifier" binding:"required"` // can be email or username
-    Password   string `json:"password" binding:"required"`
-}
-
 // UserResponse - what to return to client (without sensitive data)
 type UserResponse struct {
     ID         string     `json:"id"`
@@ -48,6 +42,12 @@ type UserResponse struct {
     Role       string     `json:"role"`
     ProfileURL *string    `json:"profile_url,omitempty"`
     CreatedAt  time.Time  `json:"created_at"`
+}
+
+// LoginRequest - for login (email OR username + password)
+type LoginRequest struct {
+    Identifier string `json:"identifier" binding:"required"` // can be email or username
+    Password   string `json:"password" binding:"required"`
 }
 
 type LoginResponse struct {

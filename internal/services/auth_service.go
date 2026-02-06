@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"log"
 
 	"github.com/britinogn/quillhub/internal/model"
 	"github.com/britinogn/quillhub/pkg/utils"
@@ -45,7 +44,6 @@ func (s *AuthService) Register(ctx context.Context, user *model.User) error {
 	email    := strings.ToLower(strings.TrimSpace(user.Email))
 	password := strings.TrimSpace(user.Password)
 
-	log.Printf("[AUTH-SERVICE] Registering user - username: %s, email: %s", username, email)
 
 	//   ONE combined check for all required fields
 	if name == "" ||
@@ -55,7 +53,7 @@ func (s *AuthService) Register(ctx context.Context, user *model.User) error {
 		return errors.New("name, username, email, and password are required")
 	}
 
-	// Optional: very basic extra rules (you can expand later)
+	// Optional: very basic extra rules 
 	if len(username) < 3 {
 		return errors.New("username must be at least 3 characters")
 	}
@@ -67,26 +65,20 @@ func (s *AuthService) Register(ctx context.Context, user *model.User) error {
 	}
 
 	// Check if username already exists
-	log.Printf("[AUTH-SERVICE] Checking if username exists: %s", username)
 	existingUsername, err := s.repo.FindByUsername(ctx, username)
 	if err != nil {
-		log.Printf("[AUTH-SERVICE] Error checking username: %v", err)
 		return fmt.Errorf("failed to check username: %w", err)
 	}
 	if existingUsername != nil {
-		log.Printf("[AUTH-SERVICE] Username already taken: %s", username)
 		return ErrUsernameTaken
 	}
 
 	// Check if email already exists
-	log.Printf("[AUTH-SERVICE] Checking if email exists: %s", email)
 	existingUser, err := s.repo.FindByEmail(ctx, email)
 	if err != nil {
-		log.Printf("[AUTH-SERVICE] Error checking email: %v", err)
 		return fmt.Errorf("failed to check email: %w", err)
 	}
 	if existingUser != nil {
-		log.Printf("[AUTH-SERVICE] Email already registered: %s", email)
 		return ErrEmailAlreadyRegistered
 	}
 
@@ -94,19 +86,16 @@ func (s *AuthService) Register(ctx context.Context, user *model.User) error {
 	user.Name = name
 	user.Username = username
 	user.Email = email
-	// Password stays as is (will be hashed in repo)
+
 	if user.Role == "" {
 		user.Role = "user"
 	}
 
-	log.Printf("[AUTH-SERVICE] Creating user in database")
 	// Create user - this will populate ID and CreatedAt
 	if err := s.repo.Create(ctx, user); err != nil {
-		log.Printf("[AUTH-SERVICE] Database create error: %v", err)
 		return fmt.Errorf("failed to create user: %w", err)
 	}
 
-	log.Printf("[AUTH-SERVICE] User created successfully with ID: %s", user.ID.String())
 	return nil
 }
 
