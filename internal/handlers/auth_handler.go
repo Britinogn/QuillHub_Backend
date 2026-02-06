@@ -19,42 +19,61 @@ func NewAuthHandler(authService *services.AuthService) *AuthHandler{
 }
 
 func (h *AuthHandler) Register(c *gin.Context) {
-	var req model.User
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(400, gin.H{"error": "invalid req"})
-		return
-	}
+    var req model.CreateUserRequest  // ← Use CreateUserRequest, not model.User
+    if err := c.ShouldBindJSON(&req); err != nil {
+        log.Printf("[REGISTER-ERROR] Binding failed: %v", err)
+        c.JSON(400, gin.H{"error": "invalid request", "details": err.Error()})
+        return
+    }
 
-    // Convert to User model
-	user := &model.User{
-		Name:     req.Name,
-		// Username: req.Username,
-		Email:    req.Email,
-        Role: req.Role,
-	}
+    log.Printf("[REGISTER] Attempting to register user: %s", req.Email)
 
-	ctx := c.Request.Context()
-	err := h.authService.Register(ctx, &req)
-	if err != nil {
-		log.Printf("[REGISTER-ERROR] Full error from service: %v", err)  // ← add this line
-		if errors.Is(err, services.ErrEmailAlreadyRegistered) {
-			c.JSON(409, gin.H{"error": "email already registered"}) // ← friendly message
-			return
-		}
-		// Other errors → generic 500
-		// c.JSON(500, gin.H{"error": "failed to create user"})
-		// return
-	}
+    // Convert CreateUserRequest to User model
+    user := &model.User{
+        Name:     req.Name,
+        Username: req.Username,
+        Email:    req.Email,
+        Password: req.Password,
+        // Role:     "user",
+    }
 
-	c.JSON(http.StatusCreated, gin.H{
+    // Set role: use provided role or default to "user"
+    if req.Role != nil && *req.Role != "" {
+        user.Role = *req.Role
+    } else {
+        user.Role = "user"
+    }
+
+    ctx := c.Request.Context()
+    err := h.authService.Register(ctx, user)
+    if err != nil {
+        log.Printf("[REGISTER-ERROR] Service error: %v", err)
+        if errors.Is(err, services.ErrEmailAlreadyRegistered) {
+            c.JSON(409, gin.H{"error": "email already registered"})
+            return
+        }
+        if errors.Is(err, services.ErrUsernameTaken) {
+            c.JSON(409, gin.H{"error": "username already taken"})
+            return
+        }
+        c.JSON(500, gin.H{
+            "error": "failed to create user",
+            "details": err.Error(),
+        })
+        return
+    }
+
+    log.Printf("[REGISTER] User created successfully with ID: %s", user.ID.String())
+
+    c.JSON(http.StatusCreated, gin.H{
         "message": "user registered successfully",
         "data": model.UserResponse{
-            // ID: user.ID,
-			ID : user.ID.String(),
-            Name:user.Name,
-			Username: req.Username,
-            Email: user.Email,
-            Role: user.Role,
+            ID:        user.ID.String(),
+            Name:      user.Name,
+            Username:  user.Username,
+            Email:     user.Email,
+            Role:      user.Role,
+            CreatedAt: user.CreatedAt,
         },
     })
 }
@@ -90,7 +109,50 @@ func (h *AuthHandler) Login(c *gin.Context) {
                 Username: user.Username,
                 Email: user.Email,
                 Role: user.Role,
+                CreatedAt: user.CreatedAt,
             },
+        },
+    })
+}
+
+func (h *AuthHandler) RegisterAdmin(c *gin.Context) {
+    // Get the requesting user's role from JWT token
+    requestingUserRole, exists := c.Get("user_role")
+    if !exists {
+        c.JSON(401, gin.H{"error": "unauthorized"})
+        return
+    }
+
+    var req model.CreateUserRequest
+    if err := c.ShouldBindJSON(&req); err != nil {
+        c.JSON(400, gin.H{"error": "invalid request", "details": err.Error()})
+        return
+    }
+
+    user := &model.User{
+        Name:     req.Name,
+        Username: req.Username,
+        Email:    req.Email,
+        Password: req.Password,
+    }
+
+    ctx := c.Request.Context()
+    err := h.authService.RegisterAdmin(ctx, user, requestingUserRole.(string))
+    if err != nil {
+        log.Printf("[REGISTER-ADMIN-ERROR] %v", err)
+        c.JSON(500, gin.H{"error": err.Error()})
+        return
+    }
+
+    c.JSON(http.StatusCreated, gin.H{
+        "message": "admin user created successfully",
+        "data": model.UserResponse{
+            ID:        user.ID.String(),
+            Name:      user.Name,
+            Username:  user.Username,
+            Email:     user.Email,
+            Role:      user.Role,
+            CreatedAt: user.CreatedAt,
         },
     })
 }

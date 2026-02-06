@@ -11,6 +11,9 @@ import (
 	"github.com/joho/godotenv"
 )
 
+// DB is the global database connection pool
+var DB *pgxpool.Pool
+
 func init() {
 	paths := []string{".", ".env", "../.env", "../../.env"}
 	
@@ -78,6 +81,17 @@ func ConnectPostgres(ctx context.Context) (*pgxpool.Pool, error) {
 		return nil, fmt.Errorf("failed to ping database: %w", err)
 	}
 
+	// Store in global variable
+	DB = pool
+
 	log.Println("✓ Postgres connected successfully")
 	return pool, nil
+}
+
+// Close gracefully closes the database connection
+func Close() {
+	if DB != nil {
+		DB.Close()
+		log.Println("✓ Database connection closed")
+	}
 }

@@ -78,3 +78,18 @@ func RegisterRoutes(router *gin.Engine, authHandler *handlers.AuthHandler) {
 		// protected.Group("/search")
 	}
 }
+
+
+
+
+// In your routes.go
+// protected := api.Group("")
+// protected.Use(middleware.AuthMiddleware())
+// {
+//     // Admin-only routes
+//     admin := protected.Group("/admin")
+//     admin.Use(middleware.AdminOnly()) // You'll need to create this middleware
+//     {
+//         admin.POST("/register-admin", authHandler.RegisterAdmin)
+//     }
+//}

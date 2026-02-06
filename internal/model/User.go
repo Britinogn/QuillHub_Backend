@@ -7,28 +7,30 @@ import (
 )
 
 type User struct {
-    ID          pgtype.UUID    `json:"id"`
-    Name        string     `json:"name"`
-    Username    string     `json:"username"`
-    Email       string     `json:"email"`
-    Password    string     `json:"-"`                    // "-" means don't return in JSON responses
-    Role        string     `json:"role"`
-    Gender      *string    `json:"gender,omitempty"`     // pointer = nullable field
-    ProfileURL  *string    `json:"profile_url,omitempty"`
-    IsVerified  bool       `json:"is_verified"`
-    IsActive    bool       `json:"is_active"`
-    Bio         *string    `json:"bio,omitempty"`
-    LastLogin   *time.Time `json:"last_login,omitempty"`
-    UpdatedAt   time.Time  `json:"updated_at"`
-    CreatedAt   time.Time  `json:"created_at"`
+    ID          pgtype.UUID    `json:"id" db:"id"`
+    Name        string         `json:"name" db:"name"`
+    Username    string         `json:"username" db:"username"`
+    Email       string         `json:"email" db:"email"`
+    Password    string         `json:"-" db:"password"`
+    Role        string         `json:"role" db:"role"`
+    Gender      *string        `json:"gender,omitempty" db:"gender"`
+    ProfileURL  *string        `json:"profile_url,omitempty" db:"profile_url"`
+    IsVerified  bool           `json:"is_verified" db:"is_verified"`
+    IsActive    bool           `json:"is_active" db:"is_active"`
+    Bio         *string        `json:"bio,omitempty" db:"bio"`
+    LastLogin   *time.Time     `json:"last_login,omitempty" db:"last_login"`
+    CreatedAt   time.Time      `json:"created_at" db:"created_at"`
+    UpdatedAt   time.Time      `json:"updated_at" db:"updated_at"`
 }
 
 // CreateUserRequest - for registration
 type CreateUserRequest struct {
     Name     string `json:"name" binding:"required"`
-    Username string `json:"username" binding:"required"`
+    Username string `json:"username" binding:"required,min=3"` // add min length
     Email    string `json:"email" binding:"required,email"`
     Password string `json:"password" binding:"required,min=6"`
+    Role     *string `json:"role"`  // ← Optional role field
+
 }
 
 // LoginRequest - for login (email OR username + password)
@@ -49,6 +51,6 @@ type UserResponse struct {
 }
 
 type LoginResponse struct {
-	Token string        `json:"token"`
-	User  UserResponse  `json:"user"`
+    Token string       `json:"token"`
+    User  UserResponse `json:"user"`
 }
