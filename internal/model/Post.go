@@ -14,8 +14,8 @@ type Post struct {
 	AuthorID   pgtype.UUID  `json:"author_id" db:"author_id"`
 	ImageURL   *string      `json:"image_url,omitempty" db:"image_url"`
 	Tags       []string     `json:"tags" db:"tags"`
-	LikesID    *pgtype.UUID `json:"likes,omitempty" db:"likes"`      // Reference to likes table
-	CommentsID *pgtype.UUID `json:"comments,omitempty" db:"comments"` // Reference to comments table
+	Likes    *pgtype.UUID 	`json:"likes,omitempty" db:"likes"`      // Reference to likes table
+	Comments *pgtype.UUID 	`json:"comments,omitempty" db:"comments"` // Reference to comments table
 	CreatedAt  time.Time    `json:"created_at" db:"created_at"`
 	UpdatedAt  time.Time    `json:"updated_at" db:"updated_at"`
 }

@@ -30,14 +30,23 @@ func main() {
 	}
 	defer dbPool.Close()
 
+	// Initialize Cloudinary
+	cld, err := database.NewCloudinary()
+	if err != nil {
+		log.Fatal("Failed to initialize Cloudinary:", err)
+	}
+
 	// Create repository
 	userRepo := repository.NewUserRepository(dbPool)
+	postRepo:= repository.NewPostRepository(dbPool)
 
 	// Create service
 	authService := services.NewAuthService(userRepo)
+	postService := services.NewPostService(postRepo, cld)
 
 	// Create handler
 	authHandler := handlers.NewAuthHandler(authService)
+	postHandler := handlers.NewPostHandler(postService)
 
 	//Set up Gin router
 	router := gin.Default() // or gin.New() if you want full control
@@ -54,7 +63,7 @@ func main() {
 	}))
 
 	// Register all routes 
-	routes.RegisterRoutes(router, authHandler)
+	routes.RegisterRoutes(router, authHandler, postHandler)
 
 	// Graceful shutdown
 	srv := &http.Server{

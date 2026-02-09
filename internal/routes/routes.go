@@ -9,7 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func RegisterRoutes(router *gin.Engine, authHandler *handlers.AuthHandler) {
+func RegisterRoutes(router *gin.Engine, authHandler *handlers.AuthHandler, postHandler *handlers.PostHandler) {
 	//   API Versioning + Grouping
 	api := router.Group("/api")
 
@@ -58,19 +58,19 @@ func RegisterRoutes(router *gin.Engine, authHandler *handlers.AuthHandler) {
 		// }
 
 		// Events / posts / quills (whatever your main feature is)
-		//events := protected.Group("/posts") // or /posts, /quills, etc.
-		// {
-		// 	events.GET("", getEvents)                // list all
-		// 	events.GET("/:id", getEventById)         // single event
+		posts := protected.Group("/posts") 
+		{
+			// events.GET("", getEvents)                // list all
+			// events.GET("/:id", getEventById)         // single event
 
-		// 	events.POST("", createEvent)             // create new
-		// 	events.PUT("/:id", updateEvent)          // edit
-		// 	events.DELETE("/:id", deleteEvent)       // delete
+			posts.POST("", postHandler.CreatePost)             // create new
+			// events.PUT("/:id", updateEvent)          // edit
+			// events.DELETE("/:id", deleteEvent)       // delete
 
 		// 	// Participation
 		// 	events.POST("/:id/register", registerForEvent)
 		// 	events.DELETE("/:id/register", cancelRegistration)
-		// }
+		}
 
 		// Future groups:
 		// protected.Group("/comments")
