@@ -1,7 +1,6 @@
 package repository
 
 
-
 import (
 	"context"
 	"fmt"
@@ -9,11 +8,6 @@ import (
 	"github.com/britinogn/quillhub/internal/model"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
-
-// Save, Get, Update, Delete
-
-// Generate UUID for new user
-//user.ID = uuid.New().String()
 
 type PostRepository struct {
     db *pgxpool.Pool
@@ -23,7 +17,7 @@ func NewPostRepository(db *pgxpool.Pool) *PostRepository{
 	return &PostRepository{db: db}
 }
 
-func (r *PostRepository) CreatePost (ctx context.Context, post *model.Post) error {
+func (r *PostRepository) Create(ctx context.Context, post *model.Post) error {
 	query := `
 		INSERT INTO posts (title, content, image_url, tags, author_id)
 		VALUES ($1, $2 , $3, $4, $5)

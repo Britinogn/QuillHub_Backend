@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"mime/multipart"
 	"strings"
+	"log"
 
 	"github.com/britinogn/quillhub/internal/model"
 	"github.com/cloudinary/cloudinary-go/v2"
@@ -32,7 +33,7 @@ func NewPostService(repo PostRepo, cld *cloudinary.Cloudinary) *PostService {
 //Get all posts 
 
 //Create POSTS -  Business logic for creating a new post
-func (s *PostService) CreatePost(ctx context.Context, req *model.CreatePostRequest, authorID string, fileHeader *multipart.FileHeader ) (*model.Post, error) {
+func (s *PostService) CreatePost(ctx context.Context, req *model.CreatePostRequest, authorID string, fileHeaders []*multipart.FileHeader ) (*model.Post, error) {
 	//ValidATE ALL Required fields
 	if strings.TrimSpace(req.Title) == "" ||
 		strings.TrimSpace(req.Content) == "" ||
@@ -71,26 +72,30 @@ func (s *PostService) CreatePost(ctx context.Context, req *model.CreatePostReque
 	}
 
 	// Handle image upload to Cloudinary
-	var imageURL *string
-	if fileHeader != nil {
-		//open the uploaded file
-		file, err := fileHeader.Open()
-		if err != nil {
-			return nil, fmt.Errorf("failed to open uploaded file: %w", err)
+	var imageURLs []string 
+	if len(fileHeaders) > 0 {
+		log.Printf("[POST-SERVICE] Uploading %d images to Cloudinary", len(fileHeaders))
+		
+		for i, fileHeader := range fileHeaders {
+			file, err := fileHeader.Open()
+			if err != nil {
+				log.Printf("[POST-SERVICE] Failed to open file %d: %v", i, err)
+				return nil, fmt.Errorf("failed to open uploaded file %d: %w", i, err)
+			}
+			defer file.Close()
+
+			uploadResult, err := s.cld.Upload.Upload(ctx, file, uploader.UploadParams{
+				Folder: "posts",
+			})
+			if err != nil {
+				log.Printf("[POST-SERVICE] Cloudinary upload failed for file %d: %v", i, err)
+				return nil, fmt.Errorf("failed to upload image %d to Cloudinary: %w", i, err)
+			}
+
+			imageURLs = append(imageURLs, uploadResult.SecureURL)
+			log.Printf("[POST-SERVICE] Image %d uploaded: %s", i, uploadResult.SecureURL)
 		}
-		defer file.Close()
-
-		// Upload to Cloudinary
-		uploadResult , err := s.cld.Upload.Upload(ctx, file , uploader.UploadParams{
-			Folder: "posts",
-		})
-		if err != nil {
-			return nil, fmt.Errorf("failed to upload image to Cloudinary: %w", err)
-		}
-
-		imageURL = &uploadResult.SecureURL
-	}
-
+	}	
 	// Parse author UUID
 	var authorUUID pgtype.UUID
 	if err := authorUUID.Scan(authorID); err != nil {
@@ -102,7 +107,7 @@ func (s *PostService) CreatePost(ctx context.Context, req *model.CreatePostReque
 		Title: req.Title,
 		Content: req.Content,
 		AuthorID: authorUUID,
-		ImageURL: imageURL,
+		ImageURL: imageURLs,
 		Tags: processedTags,
 	}
 

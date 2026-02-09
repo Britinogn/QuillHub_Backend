@@ -9,7 +9,11 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func RegisterRoutes(router *gin.Engine, authHandler *handlers.AuthHandler, postHandler *handlers.PostHandler) {
+func RegisterRoutes(
+		router *gin.Engine, 
+		authHandler *handlers.AuthHandler, 
+		postHandler *handlers.PostHandler,
+	) {
 	//   API Versioning + Grouping
 	api := router.Group("/api")
 
@@ -48,22 +52,23 @@ func RegisterRoutes(router *gin.Engine, authHandler *handlers.AuthHandler, postH
 	// ────────────────────────────────────────────────
 	protected := api.Group("")
 	protected.Use(middleware.AuthMiddleware()) 
+	// protected.POST("/posts", postHandler.CreatePost) 
 	{
 		// User-related (profile, settings, etc.)
-		// user := protected.Group("/users")
-		// {
-		// 	user.GET("/me", authHandler.GetCurrentUser) // you'll add this later
-		// 	// user.PUT("/me", authHandler.UpdateProfile)
-		// 	// user.DELETE("/me", authHandler.DeleteAccount)
-		// }
+		//user := protected.Group("/users")
+		{
+			//user.GET("/me", authHandler.GetCurrentUser) // you'll add this later
+			// user.PUT("/me", authHandler.UpdateProfile)
+			// user.DELETE("/me", authHandler.DeleteAccount)
+		}
 
-		// Events / posts / quills (whatever your main feature is)
+		//Events / posts / quills (whatever your main feature is)
 		posts := protected.Group("/posts") 
 		{
 			// events.GET("", getEvents)                // list all
 			// events.GET("/:id", getEventById)         // single event
 
-			posts.POST("", postHandler.CreatePost)             // create new
+			posts.POST("", postHandler.CreatePost)      // create new
 			// events.PUT("/:id", updateEvent)          // edit
 			// events.DELETE("/:id", deleteEvent)       // delete
 
@@ -72,11 +77,13 @@ func RegisterRoutes(router *gin.Engine, authHandler *handlers.AuthHandler, postH
 		// 	events.DELETE("/:id/register", cancelRegistration)
 		}
 
-		// Future groups:
+		//Future groups:
 		// protected.Group("/comments")
 		// protected.Group("/likes")
 		// protected.Group("/search")
 	}
+
+	
 }
 
 

@@ -14,7 +14,7 @@ func AuthMiddleware() gin.HandlerFunc{
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
-				"error": "Invalid authorization format. Use: Bearer <token>",
+				"error": "Authorization header required",
 			})
 			return 
 		}
@@ -23,15 +23,15 @@ func AuthMiddleware() gin.HandlerFunc{
 		parts := strings.Split(authHeader, " ")
 		if len(parts) != 2 || parts[0] != "Bearer" {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
-				"error": "Authorization header required",
+				"error": "Invalid authorization format. Use: Bearer <token>",
 			})
 			return 
 		}
 
-
 		token := parts[1]
-		//verify token 
-		userId , err := utils.VerifyToken(token)
+		
+		//verify token - this returns *Claims, not string
+		claims, err := utils.VerifyToken(token)
 		if err != nil {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
 				"error": "Invalid or expired token",
@@ -39,8 +39,12 @@ func AuthMiddleware() gin.HandlerFunc{
 			return 
 		}
 	
-		// Store userId in context for use in handlers
-		c.Set("userId", userId)
+		// Store the USER ID STRING from claims, not the whole claims object
+		c.Set("userId", claims.UserID)  // ← Extract UserID from claims
+		
+		// Optionally store other useful info
+		// c.Set("userEmail", claims.Email)
+		// c.Set("userRole", claims.Role)
 		
 		// Continue to next handler
 		c.Next()

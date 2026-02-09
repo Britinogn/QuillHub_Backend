@@ -5,9 +5,9 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"time"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/britinogn/quillhub/internal/database"
 	"github.com/britinogn/quillhub/internal/handlers"
@@ -19,8 +19,7 @@ import (
 )
 
 func main() {
-
-	//Connect to PostgreSQL
+	// Connect to PostgreSQL
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
@@ -30,29 +29,35 @@ func main() {
 	}
 	defer dbPool.Close()
 
+	log.Println("✓ Database connected successfully")
+
 	// Initialize Cloudinary
 	cld, err := database.NewCloudinary()
 	if err != nil {
 		log.Fatal("Failed to initialize Cloudinary:", err)
 	}
+	log.Println("✓ Cloudinary initialized successfully")
 
-	// Create repository
+	// Create repositories
 	userRepo := repository.NewUserRepository(dbPool)
-	postRepo:= repository.NewPostRepository(dbPool)
+	postRepo := repository.NewPostRepository(dbPool)
 
-	// Create service
+	// Create services
 	authService := services.NewAuthService(userRepo)
 	postService := services.NewPostService(postRepo, cld)
 
-	// Create handler
+	// Create handlers
 	authHandler := handlers.NewAuthHandler(authService)
 	postHandler := handlers.NewPostHandler(postService)
 
-	//Set up Gin router
-	router := gin.Default() // or gin.New() if you want full control
+	// Set up Gin router
+	// Use gin.Release() in production, gin.Default() in development
+	if os.Getenv("GIN_MODE") == "release" {
+		gin.SetMode(gin.ReleaseMode)
+	}
+	router := gin.Default()
 
-
-	// Add CORS middleware (very important for frontend)
+	// Add CORS middleware
 	router.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"http://localhost:3000", "http://localhost:5173", "https://your-frontend-domain.com"},
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
@@ -62,38 +67,46 @@ func main() {
 		MaxAge:           12 * time.Hour,
 	}))
 
-	// Register all routes 
+	// Register all routes
 	routes.RegisterRoutes(router, authHandler, postHandler)
 
-	// Graceful shutdown
-	srv := &http.Server{
-		// Addr:   os.Getenv("PORT"), 
-		Addr:  ":8080",
-		Handler: router,
+	// Get port from environment or use default
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
 	}
 
-	// Start server in a goroutine so we can handle shutdown
+	// Create HTTP server
+	srv := &http.Server{
+		Addr:         ":" + port,
+		Handler:      router,
+		ReadTimeout:  15 * time.Second,
+		WriteTimeout: 15 * time.Second,
+		IdleTimeout:  60 * time.Second,
+	}
+
+	// Start server in a goroutine
 	go func() {
-		log.Printf("Starting QuillHub API on http://localhost%s", srv.Addr)
+		log.Printf("🚀 QuillHub API server starting on http://localhost:%s", port)
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("Server failed: %v", err)
+			log.Fatalf("Server failed to start: %v", err)
 		}
 	}()
 
-	// Wait for interrupt signal (Ctrl+C or kill)
+	// Wait for interrupt signal for graceful shutdown
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
-	log.Println("Shutting down server...")
 
-	// Give up to 5 seconds to finish ongoing requests
+	log.Println("⏳ Shutting down server gracefully...")
+
+	// Give server 5 seconds to finish ongoing requests
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer shutdownCancel()
 
 	if err := srv.Shutdown(shutdownCtx); err != nil {
-		log.Fatalf("Server forced shutdown: %v", err)
+		log.Fatalf("Server forced to shutdown: %v", err)
 	}
 
-
-	log.Println("Postgres connected successfully with pgx")
+	log.Println("✓ Server shutdown complete")
 }
