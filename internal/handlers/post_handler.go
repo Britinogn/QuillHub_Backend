@@ -21,19 +21,26 @@ func NewPostHandler(postService *services.PostService) *PostHandler {
 
 // CreatePost - HTTP handler for POST /posts
 func (h *PostHandler) CreatePost(c *gin.Context) {
-	// Try JSON first
 	var req model.CreatePostRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		// If JSON fails, try form-data
-		if err := c.Request.ParseMultipartForm(10 << 20); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request format"})
+	
+	// Check content type
+	contentType := c.GetHeader("Content-Type")
+	log.Printf("[POST-HANDLER] Content-Type: %s", contentType)
+	
+	// Handle based on content type
+	if strings.Contains(contentType, "application/json") {
+		// JSON request
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid JSON", "details": err.Error()})
 			return
 		}
-		
-		// Parse form-data
+	} else if strings.Contains(contentType, "multipart/form-data") {
+		// Form-data request
 		title := c.PostForm("title")
 		content := c.PostForm("content")
 		tagsString := c.PostForm("tags")
+		
+		log.Printf("[POST-HANDLER] Form data - title: '%s', content: '%s', tags: '%s'", title, content, tagsString)
 		
 		var tags []string
 		if tagsString != "" {
@@ -47,6 +54,9 @@ func (h *PostHandler) CreatePost(c *gin.Context) {
 			Content: content,
 			Tags:    tags,
 		}
+	} else {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Unsupported content type"})
+		return
 	}
 
 	// Get authenticated user ID
@@ -56,13 +66,14 @@ func (h *PostHandler) CreatePost(c *gin.Context) {
 		return
 	}
 
-	log.Printf("[POST-HANDLER] Creating post by user: %s", userId.(string))
+	log.Printf("[POST-HANDLER] Creating post - Title: '%s', Content: '%s'", req.Title, req.Content)
 
-	// Get uploaded files (support multiple images)
+	// Get uploaded files
 	form, _ := c.MultipartForm()
 	var files []*multipart.FileHeader
 	if form != nil && form.File["images"] != nil {
-		files = form.File["images"] // ← Changed to "images" (plural) to accept multiple
+		files = form.File["images"]
+		log.Printf("[POST-HANDLER] Received %d files", len(files))
 	}
 
 	// Call service
@@ -74,7 +85,7 @@ func (h *PostHandler) CreatePost(c *gin.Context) {
 		return
 	}
 
-	log.Printf("[POST-HANDLER] Post created successfully: %s", post.ID.String())
+	log.Printf("[POST-HANDLER] Post created: %s", post.ID.String())
 
 	// Return response
 	c.JSON(http.StatusCreated, gin.H{
@@ -84,7 +95,7 @@ func (h *PostHandler) CreatePost(c *gin.Context) {
 			AuthorID:  post.AuthorID.String(),
 			Title:     post.Title,
 			Content:   post.Content,
-			ImageURL:  post.ImageURL, // ← Now array
+			ImageURL:  post.ImageURL,
 			Tags:      post.Tags,
 			CreatedAt: post.CreatedAt,
 			UpdatedAt: post.UpdatedAt,
