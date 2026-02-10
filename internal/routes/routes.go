@@ -1,30 +1,38 @@
-// internal/routes/routes.go
 package routes
 
 import (
 	"net/http"
 
 	"github.com/britinogn/quillhub/internal/handlers"
-	"github.com/britinogn/quillhub/internal/middleware" 
+	"github.com/britinogn/quillhub/internal/middleware"
 	"github.com/gin-gonic/gin"
 )
 
 func RegisterRoutes(
-		router *gin.Engine, 
-		authHandler *handlers.AuthHandler, 
-		postHandler *handlers.PostHandler,
-	) {
-	//   API Versioning + Grouping
+	router *gin.Engine,
+	authHandler *handlers.AuthHandler,
+	postHandler *handlers.PostHandler,
+) {
+	// API Versioning + Grouping
 	api := router.Group("/api")
 
-	//   Public routes (no authentication required)
+	// ────────────────────────────────────────────────
+	// Public routes (no authentication required)
+	// ────────────────────────────────────────────────
 	public := api.Group("")
 	{
-		// Health / ping endpoint (very useful)
+		// Health check
 		public.GET("/health", func(c *gin.Context) {
 			c.JSON(http.StatusOK, gin.H{
 				"status":  "healthy",
-				"version": "1.0.0", 
+				"version": "1.0.0",
+			})
+		})
+
+		// Root welcome
+		public.GET("/", func(c *gin.Context) {
+			c.JSON(http.StatusOK, gin.H{
+				"message": "QuillHub API is running 🪶",
 			})
 		})
 
@@ -33,70 +41,40 @@ func RegisterRoutes(
 		{
 			auth.POST("/signup", authHandler.Register)
 			auth.POST("/login", authHandler.Login)
-
-			// Future additions:
-			// auth.POST("/forgot-password", authHandler.ForgotPassword)
-			// auth.POST("/reset-password", authHandler.ResetPassword)
 		}
 
-		// Root welcome message (optional)
-		public.GET("/", func(c *gin.Context) {
-			c.JSON(http.StatusOK, gin.H{
-				"message": "QuillHub API is running 🪶",
-			})
-		})
+		// Public post endpoints (anyone can view)
+		posts := public.Group("/posts")
+		{
+			posts.GET("", postHandler.GetAllPosts)                     // List all posts
+			posts.GET("/:id", postHandler.GetPostById)                 // Single post
+			posts.GET("/author/:authorId", postHandler.GetPostsByAuthorID) // Posts by author
+		}
 	}
 
 	// ────────────────────────────────────────────────
-	//   Authenticated / Protected routes
+	// Protected routes (authentication required)
 	// ────────────────────────────────────────────────
 	protected := api.Group("")
-	protected.Use(middleware.AuthMiddleware()) 
-	// protected.POST("/posts", postHandler.CreatePost) 
+	protected.Use(middleware.AuthMiddleware())
 	{
-		// User-related (profile, settings, etc.)
-		//user := protected.Group("/users")
+		// Protected post actions (need to be logged in)
+		posts := protected.Group("/posts")
 		{
-			//user.GET("/me", authHandler.GetCurrentUser) // you'll add this later
-			// user.PUT("/me", authHandler.UpdateProfile)
-			// user.DELETE("/me", authHandler.DeleteAccount)
+			posts.POST("", postHandler.CreatePost)   // Create post
+			// posts.PUT("/:id", postHandler.UpdatePost)    // Update post
+			// posts.DELETE("/:id", postHandler.DeletePost) // Delete post
 		}
 
-		//Events / posts / quills (whatever your main feature is)
-		posts := protected.Group("/posts") 
-		{
-			posts.GET("", postHandler.GetAllPosts)                // list all
-			// events.GET("/:id", getEventById)         // single event
+		// User profile (authenticated only)
+		// user := protected.Group("/users")
+		// {
+		//     user.GET("/me", authHandler.GetCurrentUser)
+		//     user.PUT("/me", authHandler.UpdateProfile)
+		// }
 
-			posts.POST("", postHandler.CreatePost)      // create new
-			// events.PUT("/:id", updateEvent)          // edit
-			// events.DELETE("/:id", deleteEvent)       // delete
-
-		// 	// Participation
-		// 	events.POST("/:id/register", registerForEvent)
-		// 	events.DELETE("/:id/register", cancelRegistration)
-		}
-
-		//Future groups:
+		// Future protected routes:
 		// protected.Group("/comments")
 		// protected.Group("/likes")
-		// protected.Group("/search")
 	}
-
-	
 }
-
-
-
-
-// In your routes.go
-// protected := api.Group("")
-// protected.Use(middleware.AuthMiddleware())
-// {
-//     // Admin-only routes
-//     admin := protected.Group("/admin")
-//     admin.Use(middleware.AdminOnly()) // You'll need to create this middleware
-//     {
-//         admin.POST("/register-admin", authHandler.RegisterAdmin)
-//     }
-//}

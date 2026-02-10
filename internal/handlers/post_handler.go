@@ -118,3 +118,63 @@ func (h *PostHandler) GetAllPosts(c *gin.Context) {
 
 	c.JSON(http.StatusOK, response)
 }
+
+func(h *PostHandler) GetPostById(c *gin.Context){
+	postID := c.Param("id")
+
+	if postID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Post ID is required",
+		})
+		return
+	}
+
+	// Call service to get post
+	ctx := c.Request.Context()
+	post, err := h.postService.GetPostByID(ctx, postID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	// Check if post exists
+	if post == nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"error": "Post not found",
+		})
+		return
+	}
+
+	// Return post
+	c.JSON(http.StatusOK, gin.H{
+		"post": post,
+	})
+}
+
+
+// GetPostsByAuthorID - HTTP handler for GET /posts/author/:authorId
+func (h *PostHandler) GetPostsByAuthorID(c *gin.Context) {
+	// Get author ID from URL parameter
+	authorID := c.Param("authorId")
+
+	if authorID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Author ID is required"})
+		return
+	}
+
+	// Call service to get posts
+	ctx := c.Request.Context()
+	posts, err := h.postService.GetPostsByAuthorID(ctx, authorID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Return posts (empty array if no posts found)
+	c.JSON(http.StatusOK, gin.H{
+		"posts": posts,
+		"count": len(posts),
+	})
+}

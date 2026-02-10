@@ -4,9 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"math"
 	"mime/multipart"
 	"strings"
+
 	// "time"
 
 	"github.com/britinogn/quillhub/internal/model"
@@ -25,7 +27,7 @@ type PostRepo interface{
 	GetAllPost(ctx context.Context, limit, offset int) ([]*model.Post, error)
 	CountPosts(ctx context.Context) (int64, error)
 	FindByID(ctx context.Context, postID string) (*model.Post, error)
-	FindByUserID(ctx context.Context, authorID string) ([]*model.Post, error)
+	FindByAuthorID(ctx context.Context, authorID string) ([]*model.Post, error)
 	Update(ctx context.Context, post *model.Post) error
 	Delete(ctx context.Context, postID string) error
 	IncrementViewCount(ctx context.Context, postID string) error
@@ -172,18 +174,50 @@ func (s *PostService) GetPosts(ctx context.Context, page, limit int)(*PaginatedP
 }
 
 func (s *PostService) GetPostByID(ctx context.Context, postID string) (*model.Post, error) {
+	// Validate input
+	if strings.TrimSpace(postID)  == "" {
+		return nil, errors.New("post Id is required")
+	}
+	
+	
 	post, err := s.repo.FindByID(ctx, postID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get post: %w", err)
+
 	}
+
+	// Check if post exists
 	if post == nil {
 		return nil, ErrPostNotFound
 	}
 
 	// Increment view count
-	_ = s.repo.IncrementViewCount(ctx, postID)
+	// _ = s.repo.IncrementViewCount(ctx, postID)
+	// Increment view count (async, don't fail if this errors)
+	go func() {
+		// Use background context since original request may end
+		bgCtx := context.Background()
+		if err := s.repo.IncrementViewCount(bgCtx, postID); err != nil {
+			// Log error but don't fail the request
+			log.Printf("Failed to increment view count for post %s: %v", postID, err)
+		}
+	}()
 
 	return post, nil
+}
+
+//GetPostsByAuthorID - Get all posts by author
+func (s *PostService) GetPostsByAuthorID(ctx context.Context, authorID string) ([]*model.Post, error) {
+	if strings.TrimSpace(authorID) == "" {
+		return nil, errors.New("author ID is required")
+	}
+
+	posts, err := s.repo.FindByAuthorID(ctx, authorID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get posts by author: %w", err)
+	}
+
+	return posts, nil
 }
 
 //update 

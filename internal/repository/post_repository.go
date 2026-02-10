@@ -46,7 +46,9 @@ func (r *PostRepository) Create(ctx context.Context, post *model.Post) error {
 
 func (r *PostRepository) GetAllPost(ctx context.Context, limit, offset int) ([]*model.Post, error){
 	query := `
-		SELECT id, title, content, author_id, image_url, tags, likes, comments, created_at, updated_at
+		SELECT id, title, content, author_id, image_url, tags, 
+			category, is_published, view_count,
+			likes, comments, created_at, updated_at		
 		FROM posts
 		ORDER BY created_at DESC
 		LIMIT $1 OFFSET $2
@@ -63,14 +65,16 @@ func (r *PostRepository) GetAllPost(ctx context.Context, limit, offset int) ([]*
 		var post model.Post
 		err := rows.Scan(
 			&post.ID,
-			&post.AuthorID,
 			&post.Title,
 			&post.Content,
+			&post.AuthorID,
 			&post.ImageURL,
-			&post.Category,
 			&post.Tags,
+			&post.Category,
 			&post.IsPublished,
 			&post.ViewCount,
+			&post.Likes,
+			&post.Comments,
 			&post.CreatedAt,
 			&post.UpdatedAt,
 		)
@@ -138,7 +142,7 @@ func (r *PostRepository) FindByID(ctx context.Context, postID string) (*model.Po
 
 
 //FindByID - Get a auth by authorID
-func (r *PostRepository) FindByUserID(ctx context.Context, authorID string) ([]*model.Post, error) {
+func (r *PostRepository) FindByAuthorID(ctx context.Context, authorID string) ([]*model.Post, error) {
 	query := `
 		SELECT id, author_id, title, content, image_url, category, tags, 
 		is_published, view_count, created_at, updated_at
