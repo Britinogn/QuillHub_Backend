@@ -62,8 +62,8 @@ func RegisterRoutes(
 		posts := protected.Group("/posts")
 		{
 			posts.POST("", postHandler.CreatePost)   // Create post
-			// posts.PUT("/:id", postHandler.UpdatePost)    // Update post
-			// posts.DELETE("/:id", postHandler.DeletePost) // Delete post
+			posts.PUT("/:id", postHandler.Update)    // Update post
+			posts.DELETE("/:id", postHandler.Delete) // Delete post
 		}
 
 		// User profile (authenticated only)

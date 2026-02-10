@@ -52,6 +52,8 @@ type PostResponse struct {
 	ImageURL  []string   `json:"image_url,omitempty"`
 	Tags      []string  `json:"tags"`
 	Category  *string 	`json:"category,omitempty"`
+	IsPublished bool 	`json:"is_published,omitempty"`
+	ViewCount int64 	`json:"view_count,omitempty"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }

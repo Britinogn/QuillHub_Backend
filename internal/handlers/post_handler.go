@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"log"
 	"mime/multipart"
 	"net/http"
@@ -153,7 +154,6 @@ func(h *PostHandler) GetPostById(c *gin.Context){
 	})
 }
 
-
 // GetPostsByAuthorID - HTTP handler for GET /posts/author/:authorId
 func (h *PostHandler) GetPostsByAuthorID(c *gin.Context) {
 	// Get author ID from URL parameter
@@ -176,5 +176,154 @@ func (h *PostHandler) GetPostsByAuthorID(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"posts": posts,
 		"count": len(posts),
+	})
+}
+
+func (h *PostHandler) Update(c *gin.Context) {
+	// Get post ID from URL
+	postID := c.Param("id")
+	if postID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Post ID is required"})
+		return
+	}
+
+	// Get authenticated user ID
+	userId, exists := c.Get("userId")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		return
+	}
+
+	var req model.UpdatePostRequest
+	
+	// Check content type
+	contentType := c.GetHeader("Content-Type")
+	
+	// Handle based on content type
+	if strings.Contains(contentType, "application/json") {
+		// JSON request
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid JSON", "details": err.Error()})
+			return
+		}
+	} else if strings.Contains(contentType, "multipart/form-data") {
+		// Form-data request
+		if title := c.PostForm("title"); title != "" {
+			req.Title = &title
+		}
+		if content := c.PostForm("content"); content != "" {
+			req.Content = &content
+		}
+		if category := c.PostForm("category"); category != "" {
+			req.Category = &category
+		}
+		if tagsString := c.PostForm("tags"); tagsString != "" {
+			tags := []string{}
+			for _, tag := range strings.Split(tagsString, ",") {
+				tags = append(tags, strings.TrimSpace(tag))
+			}
+			req.Tags = tags
+		}
+		if isPublished := c.PostForm("is_published"); isPublished != "" {
+			published := isPublished == "true"
+			req.IsPublished = &published
+		}
+	} else {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Unsupported content type"})
+		return
+	}
+
+	log.Printf("[POST-HANDLER] Updating post %s by user: %s", postID, userId.(string))
+
+	// Get uploaded files (only for form-data)
+	form, _ := c.MultipartForm()
+	var files []*multipart.FileHeader
+	if form != nil && form.File["images"] != nil {
+		files = form.File["images"]
+		log.Printf("[POST-HANDLER] Received %d new image files", len(files))
+	}
+
+	// Call service
+	ctx := c.Request.Context()
+	post, err := h.postService.UpdatePost(ctx, &req, postID, userId.(string), files)
+	if err != nil {
+		log.Printf("[POST-HANDLER] Update error: %v", err)
+		
+		if errors.Is(err, services.ErrPostNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Post not found"})
+			return
+		}
+		if errors.Is(err, services.ErrUnauthorizedPost) {
+			c.JSON(http.StatusForbidden, gin.H{"error": "You don't have permission to update this post"})
+			return
+		}
+		
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	log.Printf("[POST-HANDLER] Post updated successfully: %s", postID)
+
+	// Return response
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Post updated successfully",
+		"data": model.PostResponse{
+			ID:        post.ID.String(),
+			AuthorID:  post.AuthorID.String(),
+			Title:     post.Title,
+			Content:   post.Content,
+			ImageURL:  post.ImageURL,
+			Category:  post.Category,
+			Tags:      post.Tags,
+			IsPublished: post.IsPublished,
+			ViewCount: post.ViewCount,
+			CreatedAt: post.CreatedAt,
+			UpdatedAt: post.UpdatedAt,
+		},
+	})
+}
+
+
+func (h *PostHandler) Delete(c *gin.Context) {
+	// Get post ID from URL
+	postID := c.Param("id")
+	if postID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Post ID is required"})
+		return
+	}
+
+	// Get authenticated user ID
+	userId, exists := c.Get("userId")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		return
+	}
+
+	log.Printf("[POST-HANDLER] Deleting post %s by user: %s", postID, userId.(string))
+
+	// Call service
+	ctx := c.Request.Context()
+	err := h.postService.DeletePost(ctx, postID, userId.(string))
+	if err != nil {
+		log.Printf("[POST-HANDLER] Delete error: %v", err)
+		
+		if errors.Is(err, services.ErrPostNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Post not found"})
+			return
+		}
+		if errors.Is(err, services.ErrUnauthorizedPost) {
+			c.JSON(http.StatusForbidden, gin.H{"error": "You don't have permission to delete this post"})
+			return
+		}
+		
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete post"})
+		return
+	}
+
+	log.Printf("[POST-HANDLER] Post deleted successfully: %s", postID)
+
+	// Return response
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Post deleted successfully",
 	})
 }

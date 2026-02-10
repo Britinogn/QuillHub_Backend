@@ -28,12 +28,12 @@ func (r *PostRepository) Create(ctx context.Context, post *model.Post) error {
 	err := r.db.QueryRow(
 		ctx,
 		query,
-		post.AuthorID,
-		post.Title,
+		post.Title,      
 		post.Content,
-		post.ImageURL,
-		post.Category,
-		post.Tags,
+		post.ImageURL,   
+		post.Tags,       
+		post.AuthorID,    
+		post.Category,    
 		post.IsPublished,
 	).Scan(&post.ID, &post.CreatedAt, &post.UpdatedAt)
 
@@ -187,7 +187,7 @@ func (r *PostRepository) Update(ctx context.Context, post *model.Post) error {
 	query := `
 		UPDATE posts
 		SET title = $1, content = $2, image_url = $3, category = $4, 
-		tags = $5, is_published = $6, updated_at = CURRENT_TIMESTAMP
+			tags = $5, is_published = $6, updated_at = CURRENT_TIMESTAMP
 		WHERE id = $7
 		RETURNING updated_at
 	`
@@ -198,9 +198,9 @@ func (r *PostRepository) Update(ctx context.Context, post *model.Post) error {
 		post.Title,
 		post.Content,
 		post.ImageURL,
-		//post.Category,
+		post.Category,
 		post.Tags,
-		//post.IsPublished,
+		post.IsPublished,
 		post.ID,
 	).Scan(&post.UpdatedAt)
 
