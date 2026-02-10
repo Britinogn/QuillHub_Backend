@@ -65,6 +65,11 @@ func (s *PostService) CreatePost(ctx context.Context, req *model.CreatePostReque
 		return nil , errors.New("all required fields (tittle , content) must be provided")
 	}
 
+	// if strings.TrimSpace(req.Category) == "" {
+	// 	req.Category = "General"
+	// }
+
+
 	//Validate title length
 	if len(req.Title) < 3 {
 		return nil, errors.New("title must be at least 3 characters long")
@@ -82,6 +87,7 @@ func (s *PostService) CreatePost(ctx context.Context, req *model.CreatePostReque
 	//normalize data
 	req.Title = strings.TrimSpace(req.Title)
 	req.Content = strings.TrimSpace(req.Content)
+	//req.Category = strings.TrimSpace(req.Category)
 
 	// Process tags - split by comma and trim whitespace
 	var processedTags []string
@@ -129,6 +135,7 @@ func (s *PostService) CreatePost(ctx context.Context, req *model.CreatePostReque
 		AuthorID: authorUUID,
 		ImageURL: imageURLs,
 		Tags: processedTags,
+		Category: &req.Category,
 	}
 
 	// Save to database

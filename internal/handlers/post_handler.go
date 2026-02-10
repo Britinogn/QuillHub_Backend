@@ -27,8 +27,7 @@ func (h *PostHandler) CreatePost(c *gin.Context) {
 	
 	// Check content type
 	contentType := c.GetHeader("Content-Type")
-	log.Printf("[POST-HANDLER] Content-Type: %s", contentType)
-	
+		
 	// Handle based on content type
 	if strings.Contains(contentType, "application/json") {
 		// JSON request
@@ -41,6 +40,7 @@ func (h *PostHandler) CreatePost(c *gin.Context) {
 		title := c.PostForm("title")
 		content := c.PostForm("content")
 		tagsString := c.PostForm("tags")
+		category := c.PostForm("category")
 				
 		var tags []string
 		if tagsString != "" {
@@ -53,6 +53,7 @@ func (h *PostHandler) CreatePost(c *gin.Context) {
 			Title:   title,
 			Content: content,
 			Tags:    tags,
+			Category: category,
 		}
 	} else {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Unsupported content type"})
@@ -92,6 +93,9 @@ func (h *PostHandler) CreatePost(c *gin.Context) {
 			Content:   post.Content,
 			ImageURL:  post.ImageURL,
 			Tags:      post.Tags,
+			Category: 	post.Category,
+			IsPublished: post.IsPublished,
+			ViewCount: post.ViewCount,
 			CreatedAt: post.CreatedAt,
 			UpdatedAt: post.UpdatedAt,
 		},

@@ -20,8 +20,8 @@ func NewPostRepository(db *pgxpool.Pool) *PostRepository{
 
 func (r *PostRepository) Create(ctx context.Context, post *model.Post) error {
 	query := `
-		INSERT INTO posts (title, content, image_url, tags, author_id, category, is_published)
-		VALUES ($1, $2 , $3, $4, $5, $6, $7)
+		INSERT INTO posts (title, content, image_url, tags, author_id, category)
+		VALUES ($1, $2 , $3, $4, $5, $6)
 		RETURNING id , created_at , updated_at
 	`
 	// Execute query and scan the returned values
@@ -34,7 +34,6 @@ func (r *PostRepository) Create(ctx context.Context, post *model.Post) error {
 		post.Tags,       
 		post.AuthorID,    
 		post.Category,    
-		post.IsPublished,
 	).Scan(&post.ID, &post.CreatedAt, &post.UpdatedAt)
 
 	if err != nil {

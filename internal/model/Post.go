@@ -16,9 +16,9 @@ type Post struct {
 	Tags       	[]string     	`json:"tags" db:"tags"`
 	Likes    	*pgtype.UUID 	`json:"likes,omitempty" db:"likes"`      // Reference to likes table
 	Comments 	*pgtype.UUID 	`json:"comments,omitempty" db:"comments"` // Reference to comments table
-	Category 	*string 			`json:"category" db:"category"`
+	Category 	*string 		`json:"category" db:"category"`
 	IsPublished bool         	`json:"is_published" db:"is_published"`
-	ViewCount 	int64   			`json:"view_count" db:"view_count"`
+	ViewCount 	int64   		`json:"view_count" db:"view_count"`
 	CreatedAt 	time.Time    	`json:"created_at" db:"created_at"`
 	UpdatedAt  	time.Time    	`json:"updated_at" db:"updated_at"`
 }
@@ -28,7 +28,7 @@ type CreatePostRequest struct {
 	Title    string   `json:"title" binding:"required"`
 	Content  string   `json:"content" binding:"required"`
 	//ImageURL *[]string  `json:"image_url,omitempty"`
-	Category  *string 	`json:"category,omitempty"`
+	Category    string  `json:"category,omitempty"`
 	Tags     []string `json:"tags,omitempty"`
 	AuthorID   string `json:"author_id"`
 }
@@ -38,9 +38,10 @@ type UpdatePostRequest struct {
 	Title    *string  `json:"title,omitempty"`
 	Content  *string  `json:"content,omitempty"`
 	ImageURL []string  `json:"image_url,omitempty"`
-	Category    *string  `json:"category"`
+	Category  *string 	`json:"category,omitempty"`
 	Tags     []string `json:"tags,omitempty"`
-	IsPublished *bool    `json:"is_published"`
+	IsPublished *bool    `json:"is_published,omitempty"`
+	ViewCount int64 	`json:"view_count,omitempty"`
 }
 
 // PostResponse - What to return to client
