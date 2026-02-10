@@ -4,9 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"mime/multipart"
 	"strings"
-	"log"
+	// "time"
 
 	"github.com/britinogn/quillhub/internal/model"
 	"github.com/cloudinary/cloudinary-go/v2"
@@ -14,8 +15,20 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+var (
+	ErrPostNotFound      = errors.New("post not found")
+	ErrUnauthorizedPost  = errors.New("unauthorized to modify this post")
+)
+
 type PostRepo interface{
 	Create(ctx context.Context, post *model.Post) error 
+	GetAllPost(ctx context.Context, limit, offset int) ([]*model.Post, error)
+	CountPosts(ctx context.Context) (int64, error)
+	FindByID(ctx context.Context, postID string) (*model.Post, error)
+	FindByUserID(ctx context.Context, authorID string) ([]*model.Post, error)
+	Update(ctx context.Context, post *model.Post) error
+	Delete(ctx context.Context, postID string) error
+	IncrementViewCount(ctx context.Context, postID string) error
 }
 
 type PostService struct {
@@ -28,6 +41,14 @@ func NewPostService(repo PostRepo, cld *cloudinary.Cloudinary) *PostService {
 		repo: repo,
 		cld:  cld,
 	}
+}
+
+type PaginatedPostsResponse struct {
+	TotalPages      int            `json:"totalPages"`
+	TotalDocuments  int64          `json:"totalDocuments"`
+	Page            int            `json:"page"`
+	Limit           int            `json:"limit"`
+	Posts          []*model.Post  `json:"posts"`
 }
 
 //Get all posts 
@@ -74,12 +95,10 @@ func (s *PostService) CreatePost(ctx context.Context, req *model.CreatePostReque
 	// Handle image upload to Cloudinary
 	var imageURLs []string 
 	if len(fileHeaders) > 0 {
-		log.Printf("[POST-SERVICE] Uploading %d images to Cloudinary", len(fileHeaders))
 		
 		for i, fileHeader := range fileHeaders {
 			file, err := fileHeader.Open()
 			if err != nil {
-				log.Printf("[POST-SERVICE] Failed to open file %d: %v", i, err)
 				return nil, fmt.Errorf("failed to open uploaded file %d: %w", i, err)
 			}
 			defer file.Close()
@@ -88,12 +107,10 @@ func (s *PostService) CreatePost(ctx context.Context, req *model.CreatePostReque
 				Folder: "posts",
 			})
 			if err != nil {
-				log.Printf("[POST-SERVICE] Cloudinary upload failed for file %d: %v", i, err)
 				return nil, fmt.Errorf("failed to upload image %d to Cloudinary: %w", i, err)
 			}
 
 			imageURLs = append(imageURLs, uploadResult.SecureURL)
-			log.Printf("[POST-SERVICE] Image %d uploaded: %s", i, uploadResult.SecureURL)
 		}
 	}	
 	// Parse author UUID
@@ -117,4 +134,95 @@ func (s *PostService) CreatePost(ctx context.Context, req *model.CreatePostReque
 	}
 
 	return post, nil
+}
+
+func (s *PostService) GetPosts(ctx context.Context, page, limit int)(*PaginatedPostsResponse, error){
+	// set default
+	if page < 1{
+		page = 1
+	}
+
+	if limit < 1 {
+		limit = 10
+	}
+
+	offset := (page - 1) * limit
+
+	totalDocuments, err := s.repo.CountPosts(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to count posts: %w", err)
+	}
+
+	totalPages := int(math.Ceil(float64(totalDocuments) / float64(limit)))
+
+	posts, err := s.repo.GetAllPost(ctx, limit , offset)
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve posts: %w", err)
+	}
+
+	
+	return &PaginatedPostsResponse{
+		TotalPages: totalPages,
+		TotalDocuments: totalDocuments,
+		Page: page,
+		Limit: limit,
+		Posts: posts,
+	}, nil
+
+}
+
+func (s *PostService) GetPostByID(ctx context.Context, postID string) (*model.Post, error) {
+	post, err := s.repo.FindByID(ctx, postID)
+	if err != nil {
+		return nil, err
+	}
+	if post == nil {
+		return nil, ErrPostNotFound
+	}
+
+	// Increment view count
+	_ = s.repo.IncrementViewCount(ctx, postID)
+
+	return post, nil
+}
+
+//update 
+func (s *PostService) UpdatePost(ctx context.Context, post *model.Post, userID string) error {
+	existing, err := s.repo.FindByID(ctx, post.ID.String())
+	if err != nil {
+		return err
+	}
+	if existing == nil {
+		return ErrPostNotFound
+	}
+
+	// Check ownership
+	if existing.AuthorID.String() != userID {
+		return ErrUnauthorizedPost
+	}
+
+	return s.repo.Update(ctx, post)
+}
+
+//delete
+func (s *PostService) DeletePost(ctx context.Context, postID, userID string) error {
+	existing, err := s.repo.FindByID(ctx, postID)
+	if err != nil {
+		return err
+	}
+	if existing == nil {
+		return ErrPostNotFound
+	}
+
+	// Check ownership
+	if existing.AuthorID.String() != userID {
+		return ErrUnauthorizedPost
+	}
+
+	// Delete image from Cloudinary if exists
+	// if existing.ImageURL != nil && *existing.ImageURL != "" {
+	// 	_ = s.cld.DeleteImage(ctx, *existing.ImageURL)
+	// }
+
+	return s.repo.Delete(ctx, postID)
 }

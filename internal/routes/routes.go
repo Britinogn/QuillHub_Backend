@@ -65,7 +65,7 @@ func RegisterRoutes(
 		//Events / posts / quills (whatever your main feature is)
 		posts := protected.Group("/posts") 
 		{
-			// events.GET("", getEvents)                // list all
+			posts.GET("", postHandler.GetAllPosts)                // list all
 			// events.GET("/:id", getEventById)         // single event
 
 			posts.POST("", postHandler.CreatePost)      // create new
