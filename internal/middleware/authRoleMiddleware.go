@@ -6,37 +6,31 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func RoleMiddleware(allowedRoles ...string) gin.HandlerFunc{
+func AdminOnly() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// Get user role from context (you'll set this after fetching user from DB)
+		// Get role from context (you must set it earlier)
 		userRole, exists := c.Get("userRole")
 		if !exists {
 			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
-				"message": "User role not found",
-			})
-			return 
-		}
-
-
-
-		role := userRole.(string)
-
-		//Check if user's role is in allowed roles 
-		allowed := false
-		for _, allowedRole := range allowedRoles {
-			if role == allowedRole {
-				allowed = true
-				break
-			}
-		}
-
-		if !allowed {
-			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
-				"message": "Insufficient permissions",
+				"error": "User role not found",
 			})
 			return
 		}
 
+		role, ok := userRole.(string)
+		if !ok || role != "admin" {
+			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
+				"error": "Admin access required",
+			})
+			return
+		}
+
+		// if !ok || (role != "admin" && role != "moderator") {
+		// 	c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "Admin access required"})
+		// 	return
+		// }
+
+		// Only admins reach here
 		c.Next()
 	}
 }

@@ -87,9 +87,16 @@ func (s *AuthService) Register(ctx context.Context, user *model.User) error {
 	user.Username = username
 	user.Email = email
 
-	if user.Role == "" {
-		user.Role = "user"
+	// if user.Role == "" {
+	// 	user.Role = "user"
+	// }
+	// Block invalid roles early
+	if user.Role != "" && user.Role != "user" {
+		return errors.New("cannot select role during registration - only 'user' allowed")
 	}
+
+	// Force default anyway (extra safety)
+	user.Role = "user"
 
 	// Create user - this will populate ID and CreatedAt
 	if err := s.repo.Create(ctx, user); err != nil {
