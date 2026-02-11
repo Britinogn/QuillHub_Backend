@@ -82,7 +82,7 @@ services:
       # Mount source code for hot reload
       - .:/app
       # Prevent overwriting node_modules/vendor
-      - /app/vendor
+      # - /app/vendor
       - /app/tmp
 
     command: air -c .air.toml

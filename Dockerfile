@@ -14,14 +14,14 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 # Copy vendor folder if it exists (much faster than go mod download)
-COPY vendor ./vendor
+# COPY vendor ./vendor
 
 # Copy source code
 COPY . .
 
 # Build with vendor (if available) or normal mode
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
-    go build -mod=vendor -o server ./cmd/server || \
+    # go build -mod=vendor -o server ./cmd/server || \
     go build -o server ./cmd/server
 
 # -------- Runtime stage --------
