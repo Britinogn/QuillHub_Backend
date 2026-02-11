@@ -35,6 +35,17 @@ func getSecret() []byte {
 
 // GenerateToken creates a signed JWT
 func GenerateToken(userID, email, username, role string) (string, error) {
+	// Read expiration from env or default to 24h
+	expiresIn := os.Getenv("JWT_EXPIRES_IN")
+	if expiresIn == "" {
+		expiresIn = "24h"
+	}
+
+	duration, err := time.ParseDuration(expiresIn)
+	if err != nil {
+		duration = 24 * time.Hour // fallback
+	}
+
 	claims := Claims{
 		UserID:   userID,
 		Email:    email,
@@ -43,7 +54,7 @@ func GenerateToken(userID, email, username, role string) (string, error) {
 		RegisteredClaims: jwt.RegisteredClaims{
 			Subject:   userID,                           // standard "sub"
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(duration)),
 			// Optional: Issuer: "quillhub-api", Audience: []string{"quillhub-frontend"}
 		},
 	}

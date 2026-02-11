@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"log"
 	// "database/sql"
 	"errors"
 	"fmt"
@@ -113,3 +114,43 @@ func (u *UserRepository) FindByUsername(ctx context.Context, username string) (*
 }
 
 
+// GetOrCreateAIBot - Get existing AI bot or create new one
+func (u *UserRepository) GetOrCreateAIBot(ctx context.Context) (string, error) {
+	// Check if AI bot user exists
+	query := `SELECT id FROM users WHERE email = 'aibot@quillhub.com' LIMIT 1`
+	var userID string
+	err := u.db.QueryRow(ctx, query).Scan(&userID)
+	
+	if err == nil {
+		log.Printf("[USER-REPO] AI Bot user already exists: %s", userID)
+		return userID, nil
+	}
+	
+	// Create AI bot user
+	insertQuery := `
+		INSERT INTO users (name, username, email, password, role)
+		VALUES ($1, $2, $3, $4, $5)
+		RETURNING id
+	`
+	
+	// Hash password
+	hashedPassword, err := utils.HashPassword("secure-bot-password-12345")
+	if err != nil {
+		return "", fmt.Errorf("failed to hash password: %w", err)
+	}
+	
+	err = u.db.QueryRow(ctx, insertQuery, 
+		"QuillHub AI Bot", 
+		"quillhub_ai", 
+		"aibot@quillhub.com", 
+		hashedPassword, 
+		"bot",
+	).Scan(&userID)
+	
+	if err != nil {
+		return "", fmt.Errorf("failed to create AI bot user: %w", err)
+	}
+	
+	log.Printf("[USER-REPO] ✅ Created new AI Bot user: %s", userID)
+	return userID, nil
+}

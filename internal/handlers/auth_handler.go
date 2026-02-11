@@ -20,7 +20,7 @@ func NewAuthHandler(authService *services.AuthService) *AuthHandler{
 func (h *AuthHandler) Register(c *gin.Context) {
     var req model.CreateUserRequest  // ← Use CreateUserRequest, not model.User
     if err := c.ShouldBindJSON(&req); err != nil {
-        c.JSON(400, gin.H{"error": "invalid request", "details": err.Error()})
+        c.JSON(400, gin.H{"error": "invalid request"})
         return
     }
 

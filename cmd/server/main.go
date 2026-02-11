@@ -43,17 +43,34 @@ func main() {
 	}
 	log.Println("✓ Cloudinary initialized successfully")
 
+	
+	
 	// Initialize repositories
 	userRepo := repository.NewUserRepository(dbPool)
 	postRepo := repository.NewPostRepository(dbPool)
 	commentRepo := repository.NewCommentRepository(dbPool)
 	dashboardRepo := repository.NewDashboardRepository(dbPool)
 
+	// Get or create AI bot user
+	ctx = context.Background()
+	botUserID, err := userRepo.GetOrCreateAIBot(ctx)
+	if err != nil {
+		log.Fatalf("Failed to setup AI bot user: %v", err)
+	}
+
 	// Initialize services
 	authService := services.NewAuthService(userRepo)
 	postService := services.NewPostService(postRepo, cld)
 	commentService := services.NewCommentService(commentRepo, postRepo)
+	aiService := services.NewAIService()
 
+	// Create auto-poster service
+	autoPoster := services.NewAutoPosterService(aiService, postRepo, botUserID)
+	
+	// Start auto-poster
+	autoPoster.Start()
+	defer autoPoster.Stop()
+	
 	// Initialize dashboard service 
 	dashboardService := services.NewDashboardService(dashboardRepo)
 
