@@ -47,16 +47,21 @@ func main() {
 	userRepo := repository.NewUserRepository(dbPool)
 	postRepo := repository.NewPostRepository(dbPool)
 	commentRepo := repository.NewCommentRepository(dbPool)
+	dashboardRepo := repository.NewDashboardRepository(dbPool)
 
 	// Initialize services
 	authService := services.NewAuthService(userRepo)
 	postService := services.NewPostService(postRepo, cld)
 	commentService := services.NewCommentService(commentRepo, postRepo)
 
+	// Initialize dashboard service 
+	dashboardService := services.NewDashboardService(dashboardRepo)
+
 	// Initialize handlers
 	authHandler := handlers.NewAuthHandler(authService)
 	postHandler := handlers.NewPostHandler(postService)
 	commentHandler := handlers.NewCommentHandler(commentService)
+	dashboardHandler := handlers.NewDashboardHandler(dashboardService)
 
 	// Configure Gin router
 	if os.Getenv("GIN_MODE") == "release" {
@@ -76,7 +81,7 @@ func main() {
 	}))
 
 	// Register all application routes
-	routes.RegisterRoutes(router, authHandler, postHandler, commentHandler)
+	routes.RegisterRoutes(router, authHandler, postHandler, commentHandler, dashboardHandler)
 
 	// Determine server port (env or default)
 	port := os.Getenv("PORT")

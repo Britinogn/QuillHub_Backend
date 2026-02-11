@@ -13,6 +13,7 @@ func RegisterRoutes(
 	authHandler *handlers.AuthHandler,
 	postHandler *handlers.PostHandler,
 	commentHandler *handlers.CommentHandler,
+	dashboardHandler *handlers.DashboardHandler,
 ) {
 
 	api := router.Group("/api")
@@ -37,9 +38,11 @@ func RegisterRoutes(
 	// Protected
 	protected := api.Group("")
 	protected.Use(middleware.AuthMiddleware())
+	// protected.Use(middleware.AdminOnly())
 
 	// Register separated routes
 	RegisterAuthRoutes(public, authHandler)
 	RegisterPostRoutes(public, protected, postHandler, commentHandler)
 	RegisterCommentRoutes(public, protected, commentHandler)
+	RegisterDashboardRoutes(protected, dashboardHandler)
 }
