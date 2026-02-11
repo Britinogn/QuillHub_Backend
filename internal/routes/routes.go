@@ -12,6 +12,7 @@ func RegisterRoutes(
 	router *gin.Engine,
 	authHandler *handlers.AuthHandler,
 	postHandler *handlers.PostHandler,
+	commentHandler *handlers.CommentHandler,
 ) {
 	// API Versioning + Grouping
 	api := router.Group("/api")
@@ -49,6 +50,15 @@ func RegisterRoutes(
 			posts.GET("", postHandler.GetAllPosts)                     // List all posts
 			posts.GET("/:id", postHandler.GetPostById)                 // Single post
 			posts.GET("/author/:authorId", postHandler.GetPostsByAuthorID) // Posts by author
+
+			// Public comments (anyone can view)
+			posts.GET("/:id/comments", commentHandler.GetCommentsByPostID) 
+			
+		}
+
+		comments := public.Group("/comments")
+		{
+			comments.GET("/:id", commentHandler.GetCommentsByPostID)
 		}
 	}
 
@@ -64,6 +74,14 @@ func RegisterRoutes(
 			posts.POST("", postHandler.CreatePost)   // Create post
 			posts.PUT("/:id", postHandler.Update)    // Update post
 			posts.DELETE("/:id", postHandler.Delete) // Delete post
+
+			// Protected comment actions
+			posts.POST("/:postId/comments", commentHandler.CreateComment)
+		}
+
+		comments := protected.Group("/comments")
+		{
+			comments.DELETE("/:commentId", commentHandler.DeleteComment)
 		}
 
 		// User profile (authenticated only)

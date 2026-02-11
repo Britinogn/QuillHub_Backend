@@ -36,13 +36,15 @@ type CommentResponse struct {
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
-// CommentWithAuthor - Comment with author details (for rich responses)
-// type CommentWithAuthor struct {
-// 	ID         string    `json:"id"`
-// 	PostID     string    `json:"post_id"`
-// 	AuthorID   string    `json:"author_id"`
-// 	//AuthorName string    `json:"author_name"`
-// 	Text       string    `json:"text"`
-// 	CreatedAt  time.Time `json:"created_at"`
-// 	UpdatedAt  time.Time `json:"updated_at"`
-// }
+// internal/model/comment.go
+
+type CommentWithAuthor struct {
+	ID             string    `json:"id"`
+	Text           string    `json:"text"`
+	PostID         string    `json:"post_id"`
+	AuthorID       string    `json:"author_id"`
+	AuthorName     string    `json:"author_name"`
+	AuthorUsername string    `json:"author_username"`
+	CreatedAt      time.Time `json:"created_at"`
+	UpdatedAt      time.Time `json:"updated_at"`
+}

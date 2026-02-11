@@ -44,6 +44,49 @@ func (r *CommentRepository) Create(ctx context.Context, comment *model.Comment) 
 	return nil
 }
 
+// GetAllComments - Get all comments (optionally by post_id)
+func (r *CommentRepository) GetAllComments(ctx context.Context, postID string) ([]*model.Comment, error) {
+	query := `
+		SELECT id, text, post_id, author_id, created_at, updated_at
+		FROM comments
+		WHERE post_id = $1
+		ORDER BY created_at DESC
+	`
+
+	rows, err := r.db.Query(ctx, query, postID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch comments: %w", err)
+	}
+	defer rows.Close()
+
+	var comments []*model.Comment
+
+	for rows.Next() {
+		var comment model.Comment
+
+		err := rows.Scan(
+			&comment.ID,
+			&comment.Text,
+			&comment.PostID,
+			&comment.AuthorID,
+			&comment.CreatedAt,
+			&comment.UpdatedAt,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan comment: %w", err)
+		}
+
+		comments = append(comments, &comment)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("row iteration error: %w", err)
+	}
+
+	return comments, nil
+}
+
+
 // FindByID - Get a single comment by ID
 func (r *CommentRepository) FindByID(ctx context.Context, commentID string) (*model.Comment, error) {
 	query := `
@@ -166,4 +209,45 @@ func (r *CommentRepository) CountCommentsByPostID(ctx context.Context, postID st
 	}
 
 	return count, nil
+}
+
+// GetCommentsByPostIDWithAuthor - Get comments with author details
+func (r *CommentRepository) GetCommentsByPostIDWithAuthor(ctx context.Context, postID string) ([]*model.CommentWithAuthor, error) {
+	query := `
+		SELECT 
+			c.id, c.text, c.post_id, c.author_id, c.created_at, c.updated_at,
+			u.name as author_name, u.username as author_username
+		FROM comments c
+		INNER JOIN users u ON c.author_id = u.id
+		WHERE c.post_id = $1
+		ORDER BY c.created_at ASC
+	`
+
+	rows, err := r.db.Query(ctx, query, postID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query comments: %w", err)
+	}
+	defer rows.Close()
+
+	var comments []*model.CommentWithAuthor
+	for rows.Next() {
+		var comment model.CommentWithAuthor
+		err := rows.Scan(
+			&comment.ID,
+			&comment.Text,
+			&comment.PostID,
+			&comment.AuthorID,
+			&comment.CreatedAt,
+			&comment.UpdatedAt,
+			&comment.AuthorName,
+			&comment.AuthorUsername,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan comment: %w", err)
+		}
+
+		comments = append(comments, &comment)
+	}
+
+	return comments, nil
 }

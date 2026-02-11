@@ -41,14 +41,17 @@ func main() {
 	// Create repositories
 	userRepo := repository.NewUserRepository(dbPool)
 	postRepo := repository.NewPostRepository(dbPool)
+	commentRepo := repository.NewCommentRepository(dbPool)
 
 	// Create services
 	authService := services.NewAuthService(userRepo)
 	postService := services.NewPostService(postRepo, cld)
+	commentService := services.NewCommentService(commentRepo, postRepo)
 
 	// Create handlers
 	authHandler := handlers.NewAuthHandler(authService)
 	postHandler := handlers.NewPostHandler(postService)
+	commentHandler := handlers.NewCommentHandler(commentService)
 
 	// Set up Gin router
 	// Use gin.Release() in production, gin.Default() in development
@@ -68,7 +71,7 @@ func main() {
 	}))
 
 	// Register all routes
-	routes.RegisterRoutes(router, authHandler, postHandler)
+	routes.RegisterRoutes(router, authHandler, postHandler, commentHandler)
 
 	// Get port from environment or use default
 	port := os.Getenv("PORT")
