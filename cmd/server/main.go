@@ -19,11 +19,16 @@ import (
 )
 
 func main() {
-	// Connect to PostgreSQL
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	// Create root context cancelled on OS signals (SIGINT, SIGTERM, SIGQUIT)
+	ctx, stop := signal.NotifyContext(context.Background(),
+		syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
+	defer stop()
+
+	// Connect to PostgreSQL with timeout
+	dbCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	dbPool, err := database.ConnectPostgres(ctx)
+	dbPool, err := database.ConnectPostgres(dbCtx)
 	if err != nil {
 		log.Fatal("Failed to connect to database:", err)
 	}
@@ -31,38 +36,38 @@ func main() {
 
 	log.Println("✓ Database connected successfully")
 
-	// Initialize Cloudinary
+	// Initialize Cloudinary client
 	cld, err := database.NewCloudinary()
 	if err != nil {
 		log.Fatal("Failed to initialize Cloudinary:", err)
 	}
 	log.Println("✓ Cloudinary initialized successfully")
 
-	// Create repositories
+	// Initialize repositories
 	userRepo := repository.NewUserRepository(dbPool)
 	postRepo := repository.NewPostRepository(dbPool)
 	commentRepo := repository.NewCommentRepository(dbPool)
 
-	// Create services
+	// Initialize services
 	authService := services.NewAuthService(userRepo)
 	postService := services.NewPostService(postRepo, cld)
 	commentService := services.NewCommentService(commentRepo, postRepo)
 
-	// Create handlers
+	// Initialize handlers
 	authHandler := handlers.NewAuthHandler(authService)
 	postHandler := handlers.NewPostHandler(postService)
 	commentHandler := handlers.NewCommentHandler(commentService)
 
-	// Set up Gin router
-	// Use gin.Release() in production, gin.Default() in development
+	// Configure Gin router
 	if os.Getenv("GIN_MODE") == "release" {
 		gin.SetMode(gin.ReleaseMode)
 	}
+
 	router := gin.Default()
 
-	// Add CORS middleware
+	// Add CORS middleware with explicit config
 	router.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"http://localhost:3000", "http://localhost:5173", "https://your-frontend-domain.com"},
+		AllowOrigins:     []string{"http://localhost:3000", "http://localhost:5173", "https://quill-hub-blog.vercel.app"},
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "Accept"},
 		ExposeHeaders:    []string{"Content-Length"},
@@ -70,16 +75,16 @@ func main() {
 		MaxAge:           12 * time.Hour,
 	}))
 
-	// Register all routes
+	// Register all application routes
 	routes.RegisterRoutes(router, authHandler, postHandler, commentHandler)
 
-	// Get port from environment or use default
+	// Determine server port (env or default)
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
 	}
 
-	// Create HTTP server
+	// Configure HTTP server with timeouts
 	srv := &http.Server{
 		Addr:         ":" + port,
 		Handler:      router,
@@ -88,7 +93,7 @@ func main() {
 		IdleTimeout:  60 * time.Second,
 	}
 
-	// Start server in a goroutine
+	// Start server in background goroutine
 	go func() {
 		log.Printf("🚀 QuillHub API server starting on http://localhost:%s", port)
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
@@ -96,19 +101,16 @@ func main() {
 		}
 	}()
 
-	// Wait for interrupt signal for graceful shutdown
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	<-quit
+	// Wait for shutdown signal
+	<-ctx.Done()
+	log.Println("⏳ Shutdown signal received")
 
-	log.Println("⏳ Shutting down server gracefully...")
-
-	// Give server 5 seconds to finish ongoing requests
-	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer shutdownCancel()
+	// Graceful shutdown with timeout
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
 
 	if err := srv.Shutdown(shutdownCtx); err != nil {
-		log.Fatalf("Server forced to shutdown: %v", err)
+		log.Printf("Server forced shutdown: %v", err)
 	}
 
 	log.Println("✓ Server shutdown complete")
