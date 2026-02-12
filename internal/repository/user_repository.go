@@ -144,7 +144,7 @@ func (u *UserRepository) GetOrCreateAIBot(ctx context.Context) (string, error) {
 		"quillhub_ai", 
 		"aibot@quillhub.com", 
 		hashedPassword, 
-		"bot",
+		"user",
 	).Scan(&userID)
 	
 	if err != nil {
