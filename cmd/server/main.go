@@ -70,6 +70,8 @@ func main() {
 	// Start auto-poster
 	autoPoster.Start()
 	defer autoPoster.Stop()
+	defer aiService.Close() // ✅ Clean up client
+
 	
 	// Initialize dashboard service 
 	dashboardService := services.NewDashboardService(dashboardRepo)

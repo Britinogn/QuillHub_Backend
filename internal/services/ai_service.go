@@ -2,52 +2,49 @@
 package services
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"log"
 	"math/rand"
-	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/britinogn/quillhub/internal/model"
+	"cloud.google.com/go/ai/generativelanguage/apiv1beta/generativelanguagepb"
+	"google.golang.org/api/option"
+	generativelanguage "cloud.google.com/go/ai/generativelanguage/apiv1beta"
 )
 
 type AIService struct {
-	apiKey     string
-	httpClient *http.Client
+	apiKey string
+	client *generativelanguage.GenerativeClient
 }
 
 func NewAIService() *AIService {
+	ctx := context.Background()
+	apiKey := os.Getenv("GEMINI_API_KEY")
+	
+	client, err := generativelanguage.NewGenerativeClient(ctx, option.WithAPIKey(apiKey))
+	if err != nil {
+		log.Printf("[AI-SERVICE] Failed to create Gemini client: %v", err)
+		return &AIService{apiKey: apiKey}
+	}
+
 	return &AIService{
-		apiKey: os.Getenv("ANTHROPIC_API_KEY"),
-		httpClient: &http.Client{
-			Timeout: 60 * time.Second,
-		},
+		apiKey: apiKey,
+		client: client,
 	}
 }
 
-// ClaudeRequest - Request structure for Claude API
-type ClaudeRequest struct {
-	Model     string          `json:"model"`
-	MaxTokens int             `json:"max_tokens"`
-	Messages  []ClaudeMessage `json:"messages"`
-}
-
-type ClaudeMessage struct {
-	Role    string `json:"role"`
-	Content string `json:"content"`
-}
-
-// ClaudeResponse - Response structure from Claude API
-type ClaudeResponse struct {
-	Content []struct {
-		Text string `json:"text"`
-	} `json:"content"`
+// Close - Clean up the client
+func (s *AIService) Close() error {
+	if s.client != nil {
+		return s.client.Close()
+	}
+	return nil
 }
 
 // GenerateRandomTopic - Generate a random tech topic
@@ -95,15 +92,19 @@ func (s *AIService) GenerateRandomCategory() string {
 	return categories[rand.Intn(len(categories))]
 }
 
-// GenerateBlogPost - Generate a blog post using Claude AI
+// GenerateBlogPost - Generate a blog post using Gemini AI SDK
 func (s *AIService) GenerateBlogPost(ctx context.Context, topic string) (*model.AIGeneratedPost, error) {
 	if s.apiKey == "" {
-		return nil, errors.New("ANTHROPIC_API_KEY not set")
+		return nil, errors.New("GEMINI_API_KEY not set")
+	}
+
+	if s.client == nil {
+		return nil, errors.New("Gemini client not initialized")
 	}
 
 	log.Printf("[AI-SERVICE] Generating blog post for topic: %s", topic)
 
-	// Create prompt for Claude
+	// Create prompt
 	prompt := fmt.Sprintf(`You are a technical blog writer. Write a complete, professional blog post about: "%s"
 
 Requirements:
@@ -124,60 +125,44 @@ Format your response EXACTLY as JSON with this structure:
 
 Only return valid JSON, nothing else.`, topic)
 
-	// Prepare Claude API request
-	reqBody := ClaudeRequest{
-		Model:     "claude-sonnet-4-20250514",
-		MaxTokens: 4000,
-		Messages: []ClaudeMessage{
+	// Call Gemini API using SDK
+	req := &generativelanguagepb.GenerateContentRequest{
+		Model: "models/gemini-flash-latest", // Free tier model
+		Contents: []*generativelanguagepb.Content{
 			{
-				Role:    "user",
-				Content: prompt,
+				Parts: []*generativelanguagepb.Part{
+					{
+						Data: &generativelanguagepb.Part_Text{
+							Text: prompt,
+						},
+					},
+				},
 			},
 		},
 	}
 
-	jsonData, err := json.Marshal(reqBody)
+	resp, err := s.client.GenerateContent(ctx, req)
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal request: %w", err)
+		return nil, fmt.Errorf("failed to generate content: %w", err)
 	}
 
-	// Make API request
-	req, err := http.NewRequestWithContext(ctx, "POST", "https://api.anthropic.com/v1/messages", bytes.NewBuffer(jsonData))
-	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
+	// Extract response text
+	if len(resp.Candidates) == 0 || len(resp.Candidates[0].Content.Parts) == 0 {
+		return nil, errors.New("empty response from Gemini API")
 	}
 
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("x-api-key", s.apiKey)
-	req.Header.Set("anthropic-version", "2023-06-01")
-
-	resp, err := s.httpClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("failed to call Claude API: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("Claude API error (status %d): %s", resp.StatusCode, string(body))
-	}
-
-	// Parse response
-	var claudeResp ClaudeResponse
-	if err := json.NewDecoder(resp.Body).Decode(&claudeResp); err != nil {
-		return nil, fmt.Errorf("failed to decode response: %w", err)
-	}
-
-	if len(claudeResp.Content) == 0 {
-		return nil, errors.New("empty response from Claude API")
-	}
-
-	// Extract JSON from Claude's response
-	responseText := claudeResp.Content[0].Text
+	responseText := resp.Candidates[0].Content.Parts[0].GetText()
 	
-	// Parse the generated post
+	// Clean markdown code fences if present
+	responseText = strings.TrimPrefix(responseText, "```json")
+	responseText = strings.TrimPrefix(responseText, "```")
+	responseText = strings.TrimSuffix(responseText, "```")
+	responseText = strings.TrimSpace(responseText)
+
+	// Parse JSON response
 	var generatedPost model.AIGeneratedPost
 	if err := json.Unmarshal([]byte(responseText), &generatedPost); err != nil {
+		log.Printf("[AI-SERVICE] Failed to parse JSON. Raw response: %s", responseText)
 		return nil, fmt.Errorf("failed to parse generated post: %w", err)
 	}
 

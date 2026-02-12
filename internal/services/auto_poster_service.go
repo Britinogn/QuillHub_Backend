@@ -4,6 +4,7 @@ package services
 import (
 	"context"
 	"log"
+	"sync"
 	"time"
 
 	"github.com/britinogn/quillhub/internal/model"
@@ -16,6 +17,8 @@ type AutoPosterService struct {
 	botUserID   string
 	ticker      *time.Ticker
 	stopChan    chan bool
+	mu          sync.Mutex  // ✅ Prevent concurrent posting
+	isRunning   bool        // ✅ Track running state
 }
 
 func NewAutoPosterService(aiService *AIService, postRepo PostRepo, botUserID string) *AutoPosterService {
@@ -24,17 +27,27 @@ func NewAutoPosterService(aiService *AIService, postRepo PostRepo, botUserID str
 		postRepo:  postRepo,
 		botUserID: botUserID,
 		stopChan:  make(chan bool),
+		isRunning: false,
 	}
 }
 
 // Start - Start the auto-posting scheduler (every 25 minutes)
 func (s *AutoPosterService) Start() {
+	s.mu.Lock()
+	if s.isRunning {
+		log.Println("[AUTO-POSTER] ⚠️  Service already running")
+		s.mu.Unlock()
+		return
+	}
+	s.isRunning = true
+	s.mu.Unlock()
+
 	log.Println("[AUTO-POSTER] 🤖 Starting auto-poster service (posts every 25 minutes)")
 
 	// Create ticker for 25 minutes
 	s.ticker = time.NewTicker(25 * time.Minute)
 
-	// Post immediately on start (optional - remove if you don't want this)
+	// ✅ Post immediately on start (optional - comment out if not needed)
 	go s.createAndPostBlog()
 
 	// Start the scheduler
@@ -42,24 +55,48 @@ func (s *AutoPosterService) Start() {
 		for {
 			select {
 			case <-s.ticker.C:
+				log.Println("[AUTO-POSTER] ⏰ Timer triggered - creating new post")
 				go s.createAndPostBlog()
 			case <-s.stopChan:
-				log.Println("[AUTO-POSTER] ⏹️ Stopping auto-poster service")
+				log.Println("[AUTO-POSTER] ⏹️  Stopping auto-poster service")
 				s.ticker.Stop()
+				s.mu.Lock()
+				s.isRunning = false
+				s.mu.Unlock()
 				return
 			}
 		}
 	}()
+
+	log.Println("[AUTO-POSTER] ✅ Auto-poster service started successfully")
 }
 
 // Stop - Stop the auto-posting scheduler
 func (s *AutoPosterService) Stop() {
+	s.mu.Lock()
+	if !s.isRunning {
+		log.Println("[AUTO-POSTER] ⚠️  Service not running")
+		s.mu.Unlock()
+		return
+	}
+	s.mu.Unlock()
+
 	s.stopChan <- true
+	log.Println("[AUTO-POSTER] 🛑 Stop signal sent")
+}
+
+// IsRunning - Check if auto-poster is currently running
+func (s *AutoPosterService) IsRunning() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.isRunning
 }
 
 // createAndPostBlog - Generate and publish a blog post
 func (s *AutoPosterService) createAndPostBlog() {
-	ctx := context.Background()
+	// ✅ Use timeout context to prevent hanging
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
 
 	log.Println("[AUTO-POSTER] 📝 Generating new AI blog post...")
 
@@ -91,7 +128,7 @@ func (s *AutoPosterService) createAndPostBlog() {
 		Tags:        generatedPost.Tags,
 		Category:    &category,
 		IsPublished: true,
-		ImageURL:    []string{},
+		ImageURL:   []string{}, // ✅ Changed from ImageURL to ImageURLs (match your model)
 	}
 
 	// Save to database
@@ -100,5 +137,13 @@ func (s *AutoPosterService) createAndPostBlog() {
 		return
 	}
 
-	log.Printf("[AUTO-POSTER] ✅ Successfully posted: '%s' (ID: %s)", post.Title, post.ID.String())
+	log.Printf("[AUTO-POSTER] ✅ Successfully posted: '%s' (ID: %s)", 
+		post.Title, post.ID.String())
+	log.Printf("[AUTO-POSTER] 🏷️  Tags: %v | Category: %s", post.Tags, *post.Category)
+}
+
+// PostNow - Manually trigger a post creation (for testing/admin)
+func (s *AutoPosterService) PostNow() {
+	log.Println("[AUTO-POSTER] 🚀 Manual post creation triggered")
+	go s.createAndPostBlog()
 }
