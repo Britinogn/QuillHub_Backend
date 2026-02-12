@@ -26,9 +26,9 @@ type User struct {
 // CreateUserRequest - for registration
 type CreateUserRequest struct {
     Name     string `json:"name" binding:"required"`
-    Username string `json:"username" binding:"required,min=3"` // add min length
+    Username string `json:"username" binding:"required,min=3"` 
     Email    string `json:"email" binding:"required,email"`
-    Password string `json:"password" binding:"required,min=6"`
+    Password string `json:"password" binding:"required,min=8"`
     Role     *string `json:"role"`  // ← Optional role field
 
 }

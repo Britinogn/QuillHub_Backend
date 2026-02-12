@@ -57,8 +57,8 @@ func (s *AuthService) Register(ctx context.Context, user *model.User) error {
 	if len(username) < 3 {
 		return errors.New("username must be at least 3 characters")
 	}
-	if len(password) < 6 {
-		return errors.New("password must be at least 6 characters")  // ← Fixed typo
+	if len(password) < 8 {
+		return errors.New("password must be at least 8 characters")  
 	}
 	if !strings.Contains(email, "@"){
 		return errors.New("invalid email format")

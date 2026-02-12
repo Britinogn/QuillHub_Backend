@@ -90,14 +90,12 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
-	// Here: generate JWT, set cookie, etc.
-	// For now just return user (without password)
+	// Just return user (without password)
 	c.JSON(http.StatusOK, gin.H{
         "message": "login successful",
         "data": model.LoginResponse{
             Token: token,
             User: model.UserResponse{
-                // ID: user.ID,
 				ID : user.ID.String(),
                 Name:user.Name,
                 Username: user.Username,
@@ -111,7 +109,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 
 func (h *AuthHandler) RegisterAdmin(c *gin.Context) {
     // Get the requesting user's role from JWT token
-    requestingUserRole, exists := c.Get("user_role")
+    requestingUserRole, exists := c.Get("userRole")
     if !exists {
         c.JSON(401, gin.H{"error": "unauthorized"})
         return
@@ -119,7 +117,7 @@ func (h *AuthHandler) RegisterAdmin(c *gin.Context) {
 
     var req model.CreateUserRequest
     if err := c.ShouldBindJSON(&req); err != nil {
-        c.JSON(400, gin.H{"error": "invalid request", "details": err.Error()})
+        c.JSON(400, gin.H{"error": "invalid input", "details": err.Error()})
         return
     }
 

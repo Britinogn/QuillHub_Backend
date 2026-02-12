@@ -45,10 +45,10 @@ func (s *AutoPosterService) Start() {
 	log.Println("[AUTO-POSTER] 🤖 Starting auto-poster service (posts every 25 minutes)")
 
 	// Create ticker for 25 minutes
-	s.ticker = time.NewTicker(25 * time.Minute)
+	s.ticker = time.NewTicker(1 * time.Hour)
 
 	// ✅ Post immediately on start (optional - comment out if not needed)
-	go s.createAndPostBlog()
+	//go s.createAndPostBlog()
 
 	// Start the scheduler
 	go func() {
@@ -128,7 +128,7 @@ func (s *AutoPosterService) createAndPostBlog() {
 		Tags:        generatedPost.Tags,
 		Category:    &category,
 		IsPublished: true,
-		ImageURL:   []string{}, // ✅ Changed from ImageURL to ImageURLs (match your model)
+		ImageURL:   []string{},
 	}
 
 	// Save to database
