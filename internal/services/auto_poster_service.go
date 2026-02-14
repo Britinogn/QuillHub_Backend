@@ -48,7 +48,7 @@ func (s *AutoPosterService) Start() {
 	s.ticker = time.NewTicker(1 * time.Hour)
 
 	// ✅ Post immediately on start (optional - comment out if not needed)
-	//go s.createAndPostBlog()
+	go s.createAndPostBlog()
 
 	// Start the scheduler
 	go func() {
