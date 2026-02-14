@@ -36,6 +36,11 @@ func main() {
 
 	log.Println("✓ Database connected successfully")
 
+	// ✅ Run migrations (FIXED: use dbPool instead of db)
+	if err := database.RunMigrations(ctx, dbPool); err != nil {
+		log.Fatal("Failed to run migrations:", err)
+	}
+
 	// Initialize Cloudinary client
 	cld, err := database.NewCloudinary()
 	if err != nil {
@@ -43,8 +48,6 @@ func main() {
 	}
 	log.Println("✓ Cloudinary initialized successfully")
 
-	
-	
 	// Initialize repositories
 	userRepo := repository.NewUserRepository(dbPool)
 	postRepo := repository.NewPostRepository(dbPool)
@@ -52,7 +55,6 @@ func main() {
 	dashboardRepo := repository.NewDashboardRepository(dbPool)
 
 	// Get or create AI bot user
-	ctx = context.Background()
 	botUserID, err := userRepo.GetOrCreateAIBot(ctx)
 	if err != nil {
 		log.Fatalf("Failed to setup AI bot user: %v", err)
@@ -72,7 +74,6 @@ func main() {
 	defer autoPoster.Stop()
 	defer aiService.Close() // ✅ Clean up client
 
-	
 	// Initialize dashboard service 
 	dashboardService := services.NewDashboardService(dashboardRepo)
 
