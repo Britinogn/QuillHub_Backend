@@ -38,7 +38,7 @@ func ConnectPostgres(ctx context.Context) (*pgxpool.Pool, error) {
 
 	// Set default for sslmode if not provided
 	if sslmode == "" {
-		sslmode = "disable"
+		sslmode = "require"
 	}
 
 	// Validate required env vars
@@ -47,12 +47,23 @@ func ConnectPostgres(ctx context.Context) (*pgxpool.Pool, error) {
 	}
 
 	// Build DSN
+	// dsn := fmt.Sprintf(
+	// 	"postgresql://%s:%s@%s:%s/%s?sslmode=%s",
+	// 	user,
+	// 	password,
+	// 	host,
+	// 	port,
+	// 	dbName,
+	// 	sslmode,
+	// )
+
+	// Replace your DSN build with this
 	dsn := fmt.Sprintf(
-		"postgresql://%s:%s@%s:%s/%s?sslmode=%s",
-		user,
-		password,
+		"host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",
 		host,
 		port,
+		user,
+		password,
 		dbName,
 		sslmode,
 	)
@@ -62,6 +73,10 @@ func ConnectPostgres(ctx context.Context) (*pgxpool.Pool, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse pgx config: %w", err)
 	}
+
+	// //Force IPv4
+	// config.ConnConfig.Config.Host = host
+	// config.ConnConfig.Config.Port = 5432
 
 	// Configure connection pool
 	config.MaxConns = 25

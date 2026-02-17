@@ -37,9 +37,9 @@ func main() {
 	log.Println("✓ Database connected successfully")
 
 	// ✅ Run migrations (FIXED: use dbPool instead of db)
-	if err := database.RunMigrations(ctx, dbPool); err != nil {
-		log.Fatal("Failed to run migrations:", err)
-	}
+	// if err := database.RunMigrations(ctx, dbPool); err != nil {
+	// 	log.Fatal("Failed to run migrations:", err)
+	// }
 
 	// Initialize Cloudinary client
 	cld, err := database.NewCloudinary()

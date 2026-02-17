@@ -32,7 +32,7 @@ func (h *PostHandler) CreatePost(c *gin.Context) {
 	if strings.Contains(contentType, "application/json") {
 		// JSON request
 		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid JSON", "details": err.Error()})
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid JSON",})
 			return
 		}
 	} else if strings.Contains(contentType, "multipart/form-data") {
@@ -207,7 +207,7 @@ func (h *PostHandler) Update(c *gin.Context) {
 	if strings.Contains(contentType, "application/json") {
 		// JSON request
 		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid JSON", "details": err.Error()})
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid JSON",})
 			return
 		}
 	} else if strings.Contains(contentType, "multipart/form-data") {

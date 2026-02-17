@@ -54,7 +54,6 @@ func (h *AuthHandler) Register(c *gin.Context) {
         }
         c.JSON(500, gin.H{
             "error": "failed to create user",
-            "details": err.Error(),
         })
         return
     }
@@ -117,7 +116,7 @@ func (h *AuthHandler) RegisterAdmin(c *gin.Context) {
 
     var req model.CreateUserRequest
     if err := c.ShouldBindJSON(&req); err != nil {
-        c.JSON(400, gin.H{"error": "invalid input", "details": err.Error()})
+        c.JSON(400, gin.H{"error": "invalid input",})
         return
     }
 
