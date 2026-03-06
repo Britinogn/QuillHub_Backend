@@ -10,13 +10,16 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+
 type PostRepository struct {
     db *pgxpool.Pool
 }
 
+
 func NewPostRepository(db *pgxpool.Pool) *PostRepository{
 	return &PostRepository{db: db}
 }
+
 
 func (r *PostRepository) Create(ctx context.Context, post *model.Post) error {
 	query := `
@@ -43,11 +46,12 @@ func (r *PostRepository) Create(ctx context.Context, post *model.Post) error {
 	return nil
 }
 
+
 func (r *PostRepository) GetAllPost(ctx context.Context, limit, offset int) ([]*model.Post, error){
 	query := `
 		SELECT id, title, content, author_id, image_url, tags, 
 			category, is_published, view_count,
-			likes, comments, created_at, updated_at		
+			created_at, updated_at		
 		FROM posts
 		ORDER BY created_at DESC
 		LIMIT $1 OFFSET $2
@@ -72,8 +76,8 @@ func (r *PostRepository) GetAllPost(ctx context.Context, limit, offset int) ([]*
 			&post.Category,
 			&post.IsPublished,
 			&post.ViewCount,
-			&post.Likes,
-			&post.Comments,
+			// &post.Likes,
+			// &post.Comments,
 			&post.CreatedAt,
 			&post.UpdatedAt,
 		)
@@ -104,6 +108,7 @@ func (r *PostRepository) CountPosts(ctx context.Context) (int64, error) {
 	
 	return count, nil
 }
+
 
 //FindByID - Get a post by ID
 func (r *PostRepository) FindByID(ctx context.Context, postID string) (*model.Post, error) {
@@ -181,6 +186,7 @@ func (r *PostRepository) FindByAuthorID(ctx context.Context, authorID string) ([
 
 }
 
+
 //Update - Update a post
 func (r *PostRepository) Update(ctx context.Context, post *model.Post) error {
 	query := `
@@ -213,6 +219,7 @@ func (r *PostRepository) Update(ctx context.Context, post *model.Post) error {
 	return nil
 }
 
+
 // Delete - Delete a post
 func (r *PostRepository) Delete(ctx context.Context, postID string) error {
 	query := `DELETE FROM posts WHERE id = $1`
@@ -228,6 +235,7 @@ func (r *PostRepository) Delete(ctx context.Context, postID string) error {
 
 	return nil
 }
+
 
 // IncrementViewCount - Increment view count
 func (r *PostRepository) IncrementViewCount(ctx context.Context, postID string) error {

@@ -37,7 +37,7 @@ func AuthMiddleware() gin.HandlerFunc{
 				"error": "Invalid or expired token",
 			})
 			return 
-		}
+		}	
 	
 		// Store the USER ID STRING from claims, not the whole claims object
 		c.Set("userId", claims.UserID)  // ← Extract UserID from claims
